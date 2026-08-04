@@ -104,6 +104,7 @@ export default function Billing() {
                 onClick={() => checkout("pro_monthly")}
                 disabled={!!paying}
                 data-testid="plan-pro-monthly"
+                data-umami-event="billing-upgrade-click"
                 className="w-full h-12"
               >
                 {paying === "pro_monthly"
@@ -123,6 +124,7 @@ export default function Billing() {
                 onClick={() => checkout("pro_yearly")}
                 disabled={!!paying}
                 data-testid="plan-pro-yearly"
+                data-umami-event="billing-upgrade-click"
                 variant="accent"
                 size="lg"
                 className="w-full md:w-auto"

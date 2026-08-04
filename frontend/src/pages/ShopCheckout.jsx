@@ -119,7 +119,7 @@ export default function ShopCheckout() {
             </div>
           </div>
 
-          <button type="submit" disabled={submitting} data-testid="pay-button" className="w-full bg-[#1F3D2D] hover:bg-[#C84B31] text-white px-6 py-4 rounded-md font-manrope font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
+          <button type="submit" disabled={submitting} data-testid="pay-button" data-umami-event="shop-checkout-submit" className="w-full bg-[#1F3D2D] hover:bg-[#C84B31] text-white px-6 py-4 rounded-md font-manrope font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
             {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Redirection...</> : `Payer ${fmtPrice(total, currency)}`}
           </button>
           <p className="text-xs text-[#6B7280] font-manrope text-center">Paiement sécurisé via Stripe. Aucune donnée bancaire ne transite par ce site.</p>

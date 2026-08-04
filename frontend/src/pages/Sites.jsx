@@ -313,6 +313,7 @@ function SiteCard({ site, onDelete, nav }) {
           <button
             onClick={() => window.open(publicUrl(site.slug), "_blank")}
             data-testid={`view-public-${site.id}`}
+            data-umami-event="site-view-public"
             className="flex-1 h-12 rounded-2xl text-white text-[14px] font-semibold flex items-center justify-center gap-2 transition hover:opacity-90 active:scale-[0.97]"
             style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
           >

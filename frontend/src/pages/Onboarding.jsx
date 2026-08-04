@@ -743,6 +743,8 @@ export default function Onboarding() {
               onClick={next}
               disabled={isNextDisabled()}
               data-testid="ob-next"
+              data-umami-event="onboarding-step-next"
+              data-umami-event-step={step}
               style={{
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 gap: 8, height: 52, padding: "0 24px", borderRadius: 9999, flex: 1,
@@ -760,6 +762,7 @@ export default function Onboarding() {
               onClick={submit}
               disabled={isNextDisabled()}
               data-testid="ob-submit"
+              data-umami-event="site-generate-start"
               style={{
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 gap: 8, height: 52, padding: "0 24px", borderRadius: 9999, flex: 1,

@@ -101,6 +101,7 @@ export default function Signup() {
               type="submit"
               disabled={loading}
               data-testid="signup-submit"
+              data-umami-event="signup-submit"
               size="lg"
               className="w-full rounded-full h-13 font-semibold text-white border-0 transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(79,70,229,0.22)]"
               style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}

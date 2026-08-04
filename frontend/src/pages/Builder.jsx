@@ -158,7 +158,7 @@ export default function Builder() {
             >
               <Save className="w-3.5 h-3.5 md:mr-2" /> <span className="hidden md:inline">{saving ? "..." : "Enregistrer"}</span>
             </Button>
-            <Button onClick={publish} size="sm" data-testid="builder-publish">
+            <Button onClick={publish} size="sm" data-testid="builder-publish" data-umami-event="site-publish">
               <Globe className="w-3.5 h-3.5 md:mr-2" /> <span className="hidden md:inline">{site.status === "published" ? "Publié" : "Publier"}</span>
             </Button>
           </div>

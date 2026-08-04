@@ -129,6 +129,7 @@ function HeroArtisan({ s, onBack }) {
             <button
               type="button"
               data-testid="hero-cta-primary"
+              data-umami-event="landing-cta-hero"
               className="inline-flex items-center gap-2 text-white px-7 py-4 rounded-full font-semibold transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(79,70,229,0.22)]"
               style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
             >
@@ -404,6 +405,7 @@ export default function Landing() {
                 <button
                   type="button"
                   data-testid="pricing-pro-cta"
+                  data-umami-event="landing-cta-pricing"
                   className="w-full py-3.5 rounded-full font-semibold text-sm text-white transition-transform hover:-translate-y-0.5"
                   style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
                 >
