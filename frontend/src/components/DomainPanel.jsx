@@ -132,7 +132,7 @@ export default function DomainPanel({ site, setSite, onSaved }) {
   };
 
   const disconnect = async () => {
-    if (!window.confirm("Déconnecter ce domaine ? Le site restera accessible via votre URL artisanweb.")) return;
+    if (!window.confirm("Déconnecter ce domaine ? Le site restera accessible via votre URL Hustart.")) return;
     try {
       await api.delete(`/sites/${site.id}/domain`);
       setSite((s) => { const ns = { ...s }; delete ns.custom_domain; delete ns.domain_token; delete ns.domain_verified; return ns; });

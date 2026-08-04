@@ -34,10 +34,7 @@ export default function Login() {
       <div className="flex items-center justify-center p-8 md:p-16 relative">
         <div className="absolute top-8 left-8 md:top-12 md:left-12">
           <Link to="/" className="flex items-center gap-2.5 group" data-testid="login-logo">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#22D3EE] flex items-center justify-center">
-                <span className="text-white font-display font-bold text-sm">H</span>
-              </div>
-
+            <img src="/logo.png" alt="Hustart" className="w-9 h-9 object-contain" />
             <span className="font-display font-semibold text-[16px] tracking-tight">HuStart</span>
           </Link>
         </div>

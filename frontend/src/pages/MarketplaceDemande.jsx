@@ -105,9 +105,7 @@ export default function MarketplaceDemande() {
       <header className="border-b border-[#E4E8F1] bg-white">
         <div className="max-w-3xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <Link to={artisanSlug ? `/marketplace/artisan/${artisanSlug}` : "/marketplace"} className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#22D3EE] flex items-center justify-center">
-              <span className="text-white font-display font-semibold text-sm">H</span>
-            </div>
+            <img src="/logo.png" alt="Hustart" className="w-7 h-7 object-contain" />
             <span className="font-display font-semibold text-sm tracking-tight text-[#0F1222]">HuStart</span>
           </Link>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280]">

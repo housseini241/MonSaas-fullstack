@@ -65,9 +65,7 @@ export default function MarketplaceLanding() {
       <header className="sticky top-4 z-30 px-4">
         <div className="max-w-6xl mx-auto bg-white/80 backdrop-blur-xl border border-[#E4E8F1] rounded-full h-14 sm:h-16 pl-3 sm:pl-5 pr-1.5 sm:pr-2 flex items-center justify-between gap-2 shadow-[0_8px_24px_rgba(20,25,60,0.07)]">
           <Link to="/" className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#22D3EE] flex items-center justify-center">
-              <span className="text-white font-display font-bold text-xs leading-none">H</span>
-            </div>
+            <img src="/logo.png" alt="Hustart" className="w-8 h-8 shrink-0 object-contain" />
             <span className="flex items-baseline gap-1.5 min-w-0">
               <span className="font-display font-semibold text-sm tracking-tight text-[#0F1222] leading-none truncate">HuStart</span>
               <span className="hidden sm:inline font-mono text-[10px] tracking-[0.2em] text-[#4F46E5] leading-none">marketplace</span>

@@ -273,9 +273,7 @@ export default function ShopBuilder() {
             </Link>
             <div className="h-6 w-px bg-border hidden md:block" />
             <div className="hidden md:flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 bg-ink-1 flex items-center justify-center rounded-md shrink-0">
-                <span className="text-primary font-display font-semibold text-sm leading-none">S</span>
-              </div>
+              <img src="/logo.png" alt="Hustart" className="w-7 h-7 rounded-md object-contain shrink-0" />
               <span className="font-display font-semibold text-base tracking-tight text-ink-1 truncate">{shop.name}</span>
               <span className={[
                 "t-label !text-[9px] px-2 py-0.5 rounded-sm",

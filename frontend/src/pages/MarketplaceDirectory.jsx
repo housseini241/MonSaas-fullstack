@@ -192,9 +192,7 @@ export default function MarketplaceDirectory() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/marketplace" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#22D3EE] flex items-center justify-center">
-                <span className="text-white font-display font-semibold text-sm">H</span>
-              </div>
+              <img src="/logo.png" alt="Hustart" className="w-7 h-7 object-contain" />
               <span className="font-display font-semibold text-sm tracking-tight text-[#0F1222] hidden sm:inline">HuStart</span>
             </Link>
             <span className="font-mono text-[10px] tracking-[0.2em] text-[#4F46E5]">annuaire</span>

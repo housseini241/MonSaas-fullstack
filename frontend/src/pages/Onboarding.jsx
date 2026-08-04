@@ -687,9 +687,7 @@ export default function Onboarding() {
         <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 30, height: 30, background: GRADIENT, borderRadius: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>H</span>
-              </div>
+              <img src="/logo.png" alt="Hustart" style={{ width: 30, height: 30, objectFit: "contain" }} />
               <span style={{ fontFamily: "'Space Grotesk', Georgia, serif", fontWeight: 700, fontSize: 17, color: C.ink }}>Hustart</span>
             </div>
             <StepLabel step={step} total={TOTAL} />

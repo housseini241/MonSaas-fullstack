@@ -17,9 +17,7 @@ function Nav({ s }) {
     <header className="sticky top-4 z-50 px-4">
       <div className="max-w-5xl mx-auto bg-white/75 backdrop-blur-xl border border-[#E4E8F1] rounded-full pl-3 pr-1.5 sm:pl-4 sm:pr-2 py-1.5 sm:py-2 flex items-center justify-between gap-2 shadow-[0_8px_24px_rgba(20,25,60,0.07)]" data-testid="landing-nav">
         <Link to="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0" data-testid="logo-link">
-          <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#22D3EE] flex items-center justify-center text-white font-bold text-sm font-display">
-            {s.brand?.name?.charAt(0) || "H"}
-          </div>
+          <img src="/logo.png" alt="Hustart" className="w-8 h-8 shrink-0 object-contain" />
           <span className="font-display font-bold text-[15px] tracking-tight truncate">{s.brand?.name || "HuStart"}</span>
         </Link>
 

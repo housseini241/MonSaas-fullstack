@@ -2,8 +2,8 @@
 
 DEFAULT_APP_SETTINGS = {
     "brand": {
-        "name": "artisanweb",
-        "logo_letter": "A",
+        "name": "Hustart",
+        "logo_letter": "H",
     },
     "navbar": {
         "items": [
@@ -135,7 +135,7 @@ DEFAULT_APP_SETTINGS = {
             "price": "0€",
             "period": "/mois",
             "tagline": "Pour tester en 5 min.",
-            "features": ["1 site internet", "Sous-domaine artisanweb.app", "SEO local de base", "Capture de leads"],
+            "features": ["1 site internet", "Sous-domaine Hustart.fr", "SEO local de base", "Capture de leads"],
             "cta": "Démarrer gratuitement",
         },
         "pro": {
@@ -154,7 +154,7 @@ DEFAULT_APP_SETTINGS = {
         "button_label": "Commencer gratuitement",
     },
     "footer": {
-        "copyright": "© 2026 artisanweb · made in france",
+        "copyright": "© 2026 Hustart · made in france",
         "version": "v 1.0.0",
         "status": "status · operational",
     },
