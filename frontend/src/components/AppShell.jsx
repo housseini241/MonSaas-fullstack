@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import InstallPWAButton from "@/components/InstallPWAButton";
 import {
   LayoutGrid, Globe, Users, CalendarRange,
   Link2, CreditCard, Shield, LogOut, Menu, X, ChevronRight, Store,
@@ -155,6 +156,7 @@ export default function AppShell({ children, title, eyebrow, actions }) {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <InstallPWAButton />
               {actions}
             </div>
           </div>
