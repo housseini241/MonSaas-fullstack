@@ -18,15 +18,18 @@ from uuid import uuid4
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File, Form, Query
 from fastapi.responses import Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
+import aiofiles
+
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from dotenv import load_dotenv
 import bcrypt
 import jwt as pyjwt
-import requests as rq
 import dns.resolver
 import dns.exception
+
 
 try:
     import resend
@@ -92,8 +95,8 @@ mongo_url = os.environ['MONGO_URL']
 _mongo_client = AsyncIOMotorClient(mongo_url)
 db = _mongo_client[os.environ.get('DB_NAME', 'artisanweb')]
 
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 JWT_SECRET = os.environ.get('JWT_SECRET', 'dev-secret')
+
 JWT_ALGO = os.environ.get('JWT_ALGO', 'HS256')
 JWT_EXP_DAYS = 30
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
@@ -110,86 +113,26 @@ ADMIN_EMAILS = {
     e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()
 }
 
-# ----- Object Storage -----
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
-APP_NAME = "artisanweb"
-_storage_key: Optional[str] = None
-
-
-def _init_storage_sync() -> Optional[str]:
-    global _storage_key
-    if _storage_key:
-        return _storage_key
-    if not EMERGENT_LLM_KEY:
-        return None
-    try:
-        resp = rq.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
-        resp.raise_for_status()
-        _storage_key = resp.json().get("storage_key")
-        logger.info("Object storage initialized")
-        return _storage_key
-    except Exception as e:
-        logger.error(f"Object storage init failed: {e}")
-        return None
-
-
-def _put_object_sync(path: str, data: bytes, content_type: str) -> Optional[str]:
-    key = _init_storage_sync()
-    if not key:
-        return None
-    try:
-        resp = rq.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data,
-            timeout=120,
-        )
-        resp.raise_for_status()
-        return resp.json().get("path", path)
-    except Exception as e:
-        logger.error(f"Storage upload failed: {e}")
-        return None
-
-
-def _get_object_sync(path: str) -> Optional[tuple]:
-    key = _init_storage_sync()
-    if not key:
-        return None
-    try:
-        resp = rq.get(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key},
-            timeout=60,
-        )
-        resp.raise_for_status()
-        return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
-    except Exception as e:
-        logger.error(f"Storage download failed: {e}")
-        return None
+# ----- Local upload storage (VPS) -----
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "/app/uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 
 async def upload_image_bytes(image_bytes: bytes, mime_type: str, kind: str, owner_id: str) -> Optional[str]:
     ext = (mime_type.split("/")[-1] if "/" in mime_type else "png").split(";")[0]
     if ext == "jpeg":
         ext = "jpg"
-    path = f"{APP_NAME}/{kind}/{owner_id}/{uuid.uuid4()}.{ext}"
-    stored = await asyncio.to_thread(_put_object_sync, path, image_bytes, mime_type)
-    if not stored:
-        return None
-    await db.files.insert_one({
-        "id": str(uuid.uuid4()),
-        "storage_path": stored,
-        "kind": kind,
-        "owner_id": owner_id,
-        "content_type": mime_type,
-        "size": len(image_bytes),
-        "is_deleted": False,
-        "created_at": now_iso(),
-    })
-    return f"/api/files/{stored}"
+    filename = f"{uuid.uuid4()}.{ext}"
+    rel_path = f"{kind}/{owner_id}/{filename}"
+    full_path = os.path.join(UPLOADS_DIR, rel_path)
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    async with aiofiles.open(full_path, "wb") as f:
+        await f.write(image_bytes)
+    return f"/api/uploads/{rel_path}"
 
 
 # ----- Pricing packages (server-side ONLY) -----
+
 PACKAGES = {
     "pro_monthly": {"amount": 19.00, "currency": "eur", "label": "Pro · 30 jours", "days": 30},
     "pro_yearly": {"amount": 190.00, "currency": "eur", "label": "Pro · 12 mois (-17%)", "days": 365},
@@ -197,8 +140,10 @@ PACKAGES = {
 FREE_SITE_LIMIT = 1
 
 app = FastAPI(title="ArtisanWeb API")
+app.mount("/api/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
+
 
 logger = logging.getLogger("artisanweb")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -838,8 +783,9 @@ async def regenerate_services_images(site_id: str, user: dict = Depends(current_
 
 @api_router.post("/sites/{site_id}/upload-image")
 async def upload_site_image(site_id: str, file: UploadFile = File(...), kind: str = Form(...), user: dict = Depends(current_user)):
-    if kind not in {"hero", "service"}:
-        raise HTTPException(status_code=400, detail="kind must be 'hero' or 'service'")
+    if kind not in {"hero", "service", "logo"}:
+        raise HTTPException(status_code=400, detail="kind must be 'hero', 'service' or 'logo'")
+
     site = await db.sites.find_one({"id": site_id, "user_id": user["id"]})
     if not site:
         raise HTTPException(status_code=404, detail="Site introuvable")
@@ -852,6 +798,8 @@ async def upload_site_image(site_id: str, file: UploadFile = File(...), kind: st
         raise HTTPException(status_code=500, detail="Échec de l'upload")
     if kind == "hero":
         await db.sites.update_one({"id": site_id}, {"$set": {"hero_image_url": url, "updated_at": now_iso()}})
+    elif kind == "logo":
+        await db.sites.update_one({"id": site_id}, {"$set": {"logo_url": url, "updated_at": now_iso()}})
     else:
         current_urls = site.get("service_image_urls") or []
         new_urls = [url] + current_urls
@@ -860,7 +808,27 @@ async def upload_site_image(site_id: str, file: UploadFile = File(...), kind: st
     return updated
 
 
+@api_router.delete("/sites/{site_id}/service-image")
+async def delete_service_image(site_id: str, url: str = Query(...), user: dict = Depends(current_user)):
+    site = await db.sites.find_one({"id": site_id, "user_id": user["id"]})
+    if not site:
+        raise HTTPException(status_code=404, detail="Site introuvable")
+    current_urls = [u for u in (site.get("service_image_urls") or []) if u != url]
+    await db.sites.update_one({"id": site_id}, {"$set": {"service_image_urls": current_urls, "updated_at": now_iso()}})
+    return {"service_image_urls": current_urls}
+
+
+@api_router.delete("/sites/{site_id}/hero-image")
+async def delete_hero_image(site_id: str, user: dict = Depends(current_user)):
+    site = await db.sites.find_one({"id": site_id, "user_id": user["id"]})
+    if not site:
+        raise HTTPException(status_code=404, detail="Site introuvable")
+    await db.sites.update_one({"id": site_id}, {"$set": {"hero_image_url": None, "updated_at": now_iso()}})
+    return {"hero_image_url": None}
+
+
 # ---------- Réalisations (auth) ----------
+
 @api_router.post("/sites/{site_id}/realisations")
 async def add_realisation(site_id: str, title: str = Form(...), file: UploadFile = File(...), user: dict = Depends(current_user)):
     site = await db.sites.find_one({"id": site_id, "user_id": user["id"]})
@@ -1525,21 +1493,11 @@ async def admin_users(_admin: dict = Depends(admin_only), limit: int = 100):
 
 
 # ---------- Public files ----------
-@api_router.get("/files/{file_path:path}")
-async def get_file(file_path: str):
-    record = await db.files.find_one({"storage_path": file_path, "is_deleted": False}, {"_id": 0})
-    if not record:
-        raise HTTPException(status_code=404, detail="Fichier introuvable")
-    result = await asyncio.to_thread(_get_object_sync, file_path)
-    if not result:
-        raise HTTPException(status_code=404, detail="Fichier introuvable")
-    data, content_type = result
-    return Response(content=data, media_type=record.get("content_type") or content_type, headers={
-        "Cache-Control": "public, max-age=31536000, immutable"
-    })
+# Les fichiers uploadés sont servis via le StaticFiles monté sur /api/uploads
 
 
 # =============================================================================
+
 # E-COMMERCE (Shops / Products / Orders)
 # =============================================================================
 
@@ -3380,10 +3338,9 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    try:
-        await asyncio.to_thread(_init_storage_sync)
-    except Exception as e:
-        logger.error(f"Storage init at startup failed: {e}")
+    # Uploads locaux : le dossier est déjà créé au chargement du module
+    pass
+
 
 
 @app.on_event("shutdown")

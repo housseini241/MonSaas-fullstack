@@ -13,10 +13,13 @@ services:
     environment:
       - MONGO_URL=mongodb://mongo:27017/artisanweb
       - OLLAMA_BASE_URL=http://172.17.0.1:11434
+    volumes:
+      - uploads_data:/app/uploads
     ports:
       - "8000:8000"
     depends_on:
       - mongo
+
 
   frontend:
     build: ./frontend
@@ -28,3 +31,4 @@ services:
 
 volumes:
   mongo_data:
+  uploads_data:

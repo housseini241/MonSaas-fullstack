@@ -4,13 +4,16 @@ import api, { resolveImg } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ArrowLeft, ExternalLink, Globe, Loader2, Inbox, Save, Phone, Mail, Copy, Check, Wand2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe, Loader2, Inbox, Save, Phone, Mail, Copy, Check, Image as ImageIcon, X, Plus } from "lucide-react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ArtisanTemplate from "@/components/ArtisanTemplate";
 import ContentEditor from "@/components/ContentEditor";
 import DomainPanel from "@/components/DomainPanel";
 import SectionsReorder, { DEFAULT_SECTION_ORDER } from "@/components/SectionsReorder";
 import ThemePicker, { DEFAULT_THEME } from "@/components/ThemePicker";
+import RealisationsManager from "@/components/RealisationsManager";
+import TransformationsManager from "@/components/TransformationsManager";
 
 export default function Builder() {
   const { siteId } = useParams();
@@ -18,8 +21,8 @@ export default function Builder() {
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [regenLogo, setRegenLogo] = useState(false);
   const [leads, setLeads] = useState([]);
+
   const [copied, setCopied] = useState(false);
 
   const load = async () => {
@@ -84,21 +87,60 @@ export default function Builder() {
     }
   };
 
-  const regenerateLogo = async () => {
-    setRegenLogo(true);
-    toast.info("Génération du logo en cours... (~30s)");
+  const uploadImage = async (file, kind) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("kind", kind);
     try {
-      const r = await api.post(`/sites/${siteId}/regenerate-logo`);
-      setSite((s) => ({ ...s, logo_url: r.data.logo_url }));
-      toast.success("Logo généré !");
+      const r = await api.post(`/sites/${siteId}/upload-image`, fd);
+      setSite(r.data);
+      toast.success("Image mise à jour");
     } catch (e) {
-      toast.error(e?.response?.data?.detail || "Erreur de génération du logo");
-    } finally {
-      setRegenLogo(false);
+      toast.error(e?.response?.data?.detail || "Erreur lors de l'upload");
+    }
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file, "logo");
+    e.target.value = "";
+  };
+
+  const handleHeroChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file, "hero");
+    e.target.value = "";
+  };
+
+  const handleServiceChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file, "service");
+    e.target.value = "";
+  };
+
+  const deleteHero = async () => {
+    try {
+      const r = await api.delete(`/sites/${siteId}/hero-image`);
+      setSite((s) => ({ ...s, hero_image_url: r.data.hero_image_url }));
+      toast.success("Photo supprimée");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Erreur lors de la suppression");
+    }
+  };
+
+  const deleteServiceImage = async (url) => {
+    try {
+      const r = await api.delete(`/sites/${siteId}/service-image`, { params: { url } });
+      setSite((s) => ({ ...s, service_image_urls: r.data.service_image_urls }));
+      toast.success("Photo supprimée");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Erreur lors de la suppression");
     }
   };
 
   const publicUrl = site ? `${window.location.origin}/site/${site.slug}` : "";
+
+
   const copyUrl = () => {
     navigator.clipboard.writeText(publicUrl);
     setCopied(true);
@@ -233,13 +275,85 @@ export default function Builder() {
               <div className="md:col-span-7">
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">Logo</div>
                 <h3 className="font-display font-semibold text-xl tracking-tight mb-2">{site.logo_url ? "Logo actuel" : "Aucun logo"}</h3>
-                <p className="text-sm text-muted-foreground mb-4">Logo carré généré par IA, adapté au style de votre site.</p>
-                <Button onClick={regenerateLogo} disabled={regenLogo} data-testid="regen-logo" className="rounded-sm bg-foreground hover:bg-primary text-white">
-                  {regenLogo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
-                  {site.logo_url ? "Régénérer le logo" : "Générer un logo"}
+                <p className="text-sm text-muted-foreground mb-4">Importez votre logo depuis vos fichiers ou votre galerie.</p>
+                <input type="file" accept="image/*" className="hidden" id="logo-upload" onChange={handleLogoChange} data-testid="logo-input" />
+                <Button onClick={() => document.getElementById("logo-upload")?.click()} data-testid="change-logo" className="rounded-sm bg-foreground hover:bg-primary text-white">
+                  <Plus className="w-4 h-4 mr-2" /> Changer le logo
                 </Button>
               </div>
             </div>
+
+            {/* Photo principale (Hero) */}
+            <div className="bg-white border border-border p-6" data-testid="design-hero">
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">Photo principale</div>
+              <h3 className="font-display font-semibold text-xl tracking-tight mb-2">Hero</h3>
+              <p className="text-sm text-muted-foreground mb-4">Grande photo affichée en haut de votre page d'accueil.</p>
+              {site.hero_image_url ? (
+                <div className="flex items-start gap-4 flex-wrap">
+                  <div className="w-full max-w-md bg-background border border-border overflow-hidden">
+                    <img src={resolveImg(site.hero_image_url)} alt="Hero" className="w-full h-48 object-cover" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input type="file" accept="image/*" className="hidden" id="hero-upload" onChange={handleHeroChange} data-testid="hero-input" />
+                    <Button variant="outline" onClick={() => document.getElementById("hero-upload")?.click()} className="rounded-sm" data-testid="change-hero">
+                      <Plus className="w-4 h-4 mr-2" /> Changer la photo
+                    </Button>
+                    <Button variant="outline" onClick={deleteHero} className="rounded-sm text-destructive" data-testid="delete-hero">
+                      <X className="w-4 h-4 mr-2" /> Supprimer
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="w-full max-w-md h-32 bg-background border border-border flex items-center justify-center text-muted-foreground">
+                    <ImageIcon className="w-8 h-8" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input type="file" accept="image/*" className="hidden" id="hero-upload" onChange={handleHeroChange} data-testid="hero-input" />
+                    <Button variant="outline" onClick={() => document.getElementById("hero-upload")?.click()} className="rounded-sm" data-testid="change-hero">
+                      <Plus className="w-4 h-4 mr-2" /> Ajouter une photo
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Photos de services */}
+            <div className="bg-white border border-border p-6" data-testid="design-services-images">
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">Page d'accueil</div>
+              <h3 className="font-display font-semibold text-xl tracking-tight mb-2">Photos de services</h3>
+              <p className="text-sm text-muted-foreground mb-4">Ces photos illustrent vos services sur la page d'accueil.</p>
+              {(site.service_image_urls || []).length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-5">
+                  {(site.service_image_urls || []).map((url) => (
+                    <div key={url} className="relative bg-background border border-border overflow-hidden group">
+                      <img src={resolveImg(url)} alt="Service" className="w-full h-28 object-cover" />
+                      <button
+                        onClick={() => deleteServiceImage(url)}
+                        className="absolute top-2 right-2 bg-foreground text-white p-1.5 rounded-sm opacity-90 hover:opacity-100"
+                        data-testid="delete-service-image"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-24 bg-background border border-border flex items-center justify-center text-muted-foreground mb-5">
+                  <ImageIcon className="w-8 h-8" />
+                </div>
+              )}
+              <input type="file" accept="image/*" className="hidden" id="service-upload" onChange={handleServiceChange} data-testid="service-input" />
+              <Button variant="outline" onClick={() => document.getElementById("service-upload")?.click()} className="rounded-sm" data-testid="add-service-image">
+                <Plus className="w-4 h-4 mr-2" /> Ajouter une photo
+              </Button>
+            </div>
+
+            {/* Réalisations */}
+            <RealisationsManager site={site} onReplace={setSite} />
+
+            {/* Avant / Après */}
+            <TransformationsManager site={site} onReplace={setSite} />
 
             {/* Couleurs & Polices */}
             <div className="bg-white border border-border p-6" data-testid="design-theme">
