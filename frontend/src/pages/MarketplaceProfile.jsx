@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { resolveImg } from "@/lib/api";
+import { publicSiteUrl } from "@/lib/subdomain";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -257,11 +258,11 @@ export default function MarketplaceProfile() {
                   </Button>
                 </Link>
 
-                <Link to={`/site/${slug}`} target="_blank" className="block mt-3">
+                <a href={publicSiteUrl(slug)} target="_blank" rel="noopener noreferrer" className="block mt-3">
                   <Button variant="outline" className="w-full rounded-xl h-11 text-sm" data-testid="view-website">
                     Voir le site web →
                   </Button>
-                </Link>
+                </a>
               </div>
             </div>
           </aside>

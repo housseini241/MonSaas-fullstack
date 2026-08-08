@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import api, { resolveImg } from "@/lib/api";
+import { publicSiteUrl } from "@/lib/subdomain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -129,7 +130,7 @@ export default function Builder() {
     }
   };
 
-  const publicUrl = site ? `${window.location.origin}/site/${site.slug}` : "";
+  const publicUrl = site ? publicSiteUrl(site.slug) : "";
 
   const copyUrl = () => {
     navigator.clipboard.writeText(publicUrl);

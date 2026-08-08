@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import * as Lucide from "lucide-react";
 import { Phone, Mail, MapPin, Send, Check, ArrowRight, Sparkles } from "lucide-react";
 import { resolveImg } from "@/lib/api";
+import { siteBasePath } from "@/lib/subdomain";
 import { DEFAULT_THEME, ensureGoogleFontsLoaded } from "@/components/ThemePicker";
 import { DEFAULT_SECTION_ORDER } from "@/components/SectionsReorder";
 import SiteHeader from "@/components/Siteheader";
@@ -242,7 +243,7 @@ export default function ArtisanTemplate({ site, onSubmitLead, editable = false, 
           </div>
           <div className="flex justify-center mt-9">
             <a
-              href={`/site/${site.slug}/realisations`}
+              href={`${siteBasePath(site.slug)}/realisations`}
               className="inline-flex items-center gap-2 border-[1.5px] border-[#E4E8F1] bg-white px-7 py-4 rounded-full font-semibold transition-all hover:-translate-y-0.5 hover:border-[var(--site-grad-a)] hover:text-[var(--site-grad-a)]"
             >
               Explorer toutes les réalisations <ArrowRight className="w-4 h-4" />
@@ -271,7 +272,7 @@ export default function ArtisanTemplate({ site, onSubmitLead, editable = false, 
             <BeforeAfterSlider beforeUrl={resolveImg(featured.before_url)} afterUrl={resolveImg(featured.after_url)} />
             <div className="flex justify-center mt-9">
               <a
-                href={`/site/${site.slug}/transformation`}
+                href={`${siteBasePath(site.slug)}/transformation`}
                 className="inline-flex items-center gap-2 text-white px-7 py-4 rounded-full font-semibold transition-all hover:-translate-y-0.5"
                 style={{ background: "linear-gradient(120deg, var(--site-grad-a), var(--site-grad-b))" }}
               >

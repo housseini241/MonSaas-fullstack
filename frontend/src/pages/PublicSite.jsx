@@ -7,8 +7,9 @@ import SiteSkeleton from "@/components/Siteskeleton";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-export default function PublicSite() {
-  const { slug } = useParams();
+export default function PublicSite({ slug: slugProp } = {}) {
+  const { slug: paramSlug } = useParams();
+  const slug = slugProp || paramSlug;
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -8,6 +8,7 @@ import {
   Phone, Mail, MapPin, Star, Check, Share2,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { publicSiteUrl } from "@/lib/subdomain";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription,
@@ -18,7 +19,7 @@ import {
 /* ─────────────────────────────────────────
    Helpers
 ───────────────────────────────────────── */
-const publicUrl = (slug) => `${window.location.origin}/site/${slug}`;
+const publicUrl = (slug) => publicSiteUrl(slug);
 
 function sanitizeDomain(str) {
   return (str || "monsite").toLowerCase().replace(/[^a-z0-9-]/g, "");

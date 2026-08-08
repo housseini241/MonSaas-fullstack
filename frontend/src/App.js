@@ -1,6 +1,7 @@
 import "@/App.css";
 import "@/index.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { getSubdomainSlug } from "@/lib/subdomain";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
@@ -49,6 +50,22 @@ function Protected({ children }) {
 }
 
 export default function App() {
+  const subdomainSlug = getSubdomainSlug();
+
+  if (subdomainSlug) {
+    return (
+      <BrowserRouter>
+        <Toaster position="top-right" richColors />
+        <Routes>
+          <Route path="/" element={<PublicSite slug={subdomainSlug} />} />
+          <Route path="/realisations" element={<PublicRealisations slug={subdomainSlug} />} />
+          <Route path="/transformation" element={<PublicTransformation slug={subdomainSlug} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   return (
     <AuthProvider>
       <BrowserRouter>

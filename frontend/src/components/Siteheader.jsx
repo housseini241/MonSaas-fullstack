@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Phone, Menu, X } from "lucide-react";
 import { resolveImg } from "@/lib/api";
+import { siteBasePath } from "@/lib/subdomain";
 
 /**
  * SiteHeader — shared across ArtisanTemplate (home) and the dedicated
@@ -12,7 +13,7 @@ import { resolveImg } from "@/lib/api";
  */
 export default function SiteHeader({ site, activePage = "home" }) {
   const [open, setOpen] = useState(false);
-  const base = `/site/${site.slug}`;
+  const base = siteBasePath(site.slug);
 
   const links = [
     { key: "services", label: "Services", href: `${base}#services` },

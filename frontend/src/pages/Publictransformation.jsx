@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft } from "lucide-react";
 import { resolveImg } from "@/lib/api";
+import { siteBasePath } from "@/lib/subdomain";
 import SiteHeader from "@/components/Siteheader";
 import SiteFooter from "@/components/Sitefooter";
 import SiteSkeleton from "@/components/Siteskeleton";
@@ -10,8 +11,9 @@ import BeforeAfterSlider from "@/components/Beforeafterslider";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-export default function PublicTransformation() {
-  const { slug } = useParams();
+export default function PublicTransformation({ slug: slugProp } = {}) {
+  const { slug: paramSlug } = useParams();
+  const slug = slugProp || paramSlug;
   const [site, setSite] = useState(null);
   const [error, setError] = useState(null);
 
@@ -49,7 +51,7 @@ export default function PublicTransformation() {
 
       <section className="pt-12 pb-5">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
-          <Link to={`/site/${slug}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[var(--site-grad-a)] mb-5">
+          <Link to={siteBasePath(slug) || "/"} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[var(--site-grad-a)] mb-5">
             <ArrowLeft className="w-4 h-4" /> Retour à l'accueil
           </Link>
           <div className="text-[12px] font-bold uppercase tracking-wide mb-3" style={{ color: "var(--site-grad-b)" }}>Avant / Après</div>

@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
+import { siteBasePath } from "@/lib/subdomain";
 
 export default function SiteFooter({ site }) {
-  const base = `/site/${site.slug}`;
+  const base = siteBasePath(site.slug);
   return (
     <footer className="bg-[#0B0F1E] text-[#8A90AC] py-14 mt-16 rounded-t-[28px]">
       <div className="max-w-6xl mx-auto px-4 md:px-8">
