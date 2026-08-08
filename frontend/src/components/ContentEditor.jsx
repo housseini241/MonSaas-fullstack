@@ -141,7 +141,7 @@ export default function ContentEditor({ site, setSite, siteId }) {
                       <img src={resolveImg(s.image_url)} alt={s.name || `Service ${i + 1}`} className="w-full h-36 object-cover" />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
+                      <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} ref={(el) => (fileInputs.current[`service-image-upload-${i}`] = el)} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
                       <Button variant="outline" onClick={() => fileInputs.current[`service-image-upload-${i}`]?.click()} className="rounded-sm" data-testid={`service-image-change-${i}`}>
                         <Plus className="w-4 h-4 mr-2" /> Changer la photo
                       </Button>
@@ -156,7 +156,7 @@ export default function ContentEditor({ site, setSite, siteId }) {
                       <ImageIcon className="w-8 h-8" />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
+                      <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} ref={(el) => (fileInputs.current[`service-image-upload-${i}`] = el)} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
                       <Button variant="outline" onClick={() => fileInputs.current[`service-image-upload-${i}`]?.click()} className="rounded-sm" data-testid={`service-image-add-${i}`}>
                         <Plus className="w-4 h-4 mr-2" /> Ajouter une photo
                       </Button>
