@@ -9,6 +9,7 @@ import { ArrowLeft, ExternalLink, Globe, Loader2, Inbox, Save, Phone, Mail, Copy
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ArtisanTemplate from "@/components/ArtisanTemplate";
 import ContentEditor from "@/components/ContentEditor";
+import ServicesEditor from "@/components/ServicesEditor";
 import DomainPanel from "@/components/DomainPanel";
 import SectionsReorder, { DEFAULT_SECTION_ORDER } from "@/components/SectionsReorder";
 import ThemePicker, { DEFAULT_THEME } from "@/components/ThemePicker";
@@ -234,7 +235,7 @@ export default function Builder() {
               <h2 className="font-display text-display-l mt-2 text-ink-1">Contenu du site</h2>
               <p className="text-ink-3 mt-2 text-sm">Modifiez chaque section. N'oubliez pas d'enregistrer en haut à droite.</p>
             </div>
-            <ContentEditor site={site} setSite={setSite} siteId={siteId} />
+            <ContentEditor site={site} setSite={setSite} />
           </div>
         </TabsContent>
 
@@ -302,6 +303,9 @@ export default function Builder() {
                 </div>
               )}
             </div>
+
+            {/* Services */}
+            <ServicesEditor site={site} setSite={setSite} siteId={siteId} />
 
             {/* Réalisations */}
             <RealisationsManager site={site} onReplace={setSite} />
