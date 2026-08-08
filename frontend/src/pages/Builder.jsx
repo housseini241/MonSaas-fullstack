@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import api, { resolveImg } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,8 @@ export default function Builder() {
   const [leads, setLeads] = useState([]);
 
   const [copied, setCopied] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "preview");
 
   const load = async () => {
     setLoading(true);
@@ -112,12 +114,6 @@ export default function Builder() {
     e.target.value = "";
   };
 
-  const handleServiceChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) uploadImage(file, "service");
-    e.target.value = "";
-  };
-
   const deleteHero = async () => {
     try {
       const r = await api.delete(`/sites/${siteId}/hero-image`);
@@ -128,18 +124,7 @@ export default function Builder() {
     }
   };
 
-  const deleteServiceImage = async (url) => {
-    try {
-      const r = await api.delete(`/sites/${siteId}/service-image`, { params: { url } });
-      setSite((s) => ({ ...s, service_image_urls: r.data.service_image_urls }));
-      toast.success("Photo supprimée");
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || "Erreur lors de la suppression");
-    }
-  };
-
   const publicUrl = site ? `${window.location.origin}/site/${site.slug}` : "";
-
 
   const copyUrl = () => {
     navigator.clipboard.writeText(publicUrl);
@@ -205,7 +190,7 @@ export default function Builder() {
         </div>
       </header>
 
-      <Tabs defaultValue="preview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="border-b border-border bg-surface px-4 md:px-8 overflow-x-auto scrollbar-hide" data-testid="builder-tabs-bar">
           <TabsList className="h-12 bg-transparent rounded-none p-0 gap-1 flex flex-nowrap min-w-max">
             <TabsTrigger value="preview" className="rounded-md data-[state=active]:bg-primary-light data-[state=active]:text-primary data-[state=active]:shadow-none text-ink-2 font-medium px-4 whitespace-nowrap shrink-0" data-testid="tab-preview">Aperçu</TabsTrigger>
@@ -249,7 +234,7 @@ export default function Builder() {
               <h2 className="font-display text-display-l mt-2 text-ink-1">Contenu du site</h2>
               <p className="text-ink-3 mt-2 text-sm">Modifiez chaque section. N'oubliez pas d'enregistrer en haut à droite.</p>
             </div>
-            <ContentEditor site={site} setSite={setSite} />
+            <ContentEditor site={site} setSite={setSite} siteId={siteId} />
           </div>
         </TabsContent>
 
@@ -316,37 +301,6 @@ export default function Builder() {
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Photos de services */}
-            <div className="bg-white border border-border p-6" data-testid="design-services-images">
-              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">Page d'accueil</div>
-              <h3 className="font-display font-semibold text-xl tracking-tight mb-2">Photos de services</h3>
-              <p className="text-sm text-muted-foreground mb-4">Ces photos illustrent vos services sur la page d'accueil.</p>
-              {(site.service_image_urls || []).length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-5">
-                  {(site.service_image_urls || []).map((url) => (
-                    <div key={url} className="relative bg-background border border-border overflow-hidden group">
-                      <img src={resolveImg(url)} alt="Service" className="w-full h-28 object-cover" />
-                      <button
-                        onClick={() => deleteServiceImage(url)}
-                        className="absolute top-2 right-2 bg-foreground text-white p-1.5 rounded-sm opacity-90 hover:opacity-100"
-                        data-testid="delete-service-image"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-24 bg-background border border-border flex items-center justify-center text-muted-foreground mb-5">
-                  <ImageIcon className="w-8 h-8" />
-                </div>
-              )}
-              <input type="file" accept="image/*" className="hidden" id="service-upload" onChange={handleServiceChange} data-testid="service-input" />
-              <Button variant="outline" onClick={() => document.getElementById("service-upload")?.click()} className="rounded-sm" data-testid="add-service-image">
-                <Plus className="w-4 h-4 mr-2" /> Ajouter une photo
-              </Button>
             </div>
 
             {/* Réalisations */}

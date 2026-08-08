@@ -818,6 +818,43 @@ async def delete_service_image(site_id: str, url: str = Query(...), user: dict =
     return {"service_image_urls": current_urls}
 
 
+@api_router.post("/sites/{site_id}/services/{index}/image")
+async def upload_service_image(site_id: str, index: int, file: UploadFile = File(...), user: dict = Depends(current_user)):
+    site = await db.sites.find_one({"id": site_id, "user_id": user["id"]})
+    if not site:
+        raise HTTPException(status_code=404, detail="Site introuvable")
+    content = site.get("content") or {}
+    services = content.get("services") or []
+    if index < 0 or index >= len(services):
+        raise HTTPException(status_code=400, detail="Service introuvable")
+    data = await file.read()
+    if not data or len(data) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Fichier invalide (max 8 Mo)")
+    mime = file.content_type or "image/png"
+    url = await upload_image_bytes(data, mime, "site-service", user["id"])
+    if not url:
+        raise HTTPException(status_code=500, detail="Échec de l'upload")
+    services[index]["image_url"] = url
+    await db.sites.update_one({"id": site_id}, {"$set": {"content": content, "updated_at": now_iso()}})
+    updated = await db.sites.find_one({"id": site_id}, {"_id": 0})
+    return updated
+
+
+@api_router.delete("/sites/{site_id}/services/{index}/image")
+async def delete_service_image_by_index(site_id: str, index: int, user: dict = Depends(current_user)):
+    site = await db.sites.find_one({"id": site_id, "user_id": user["id"]})
+    if not site:
+        raise HTTPException(status_code=404, detail="Site introuvable")
+    content = site.get("content") or {}
+    services = content.get("services") or []
+    if index < 0 or index >= len(services):
+        raise HTTPException(status_code=400, detail="Service introuvable")
+    services[index]["image_url"] = None
+    await db.sites.update_one({"id": site_id}, {"$set": {"content": content, "updated_at": now_iso()}})
+    updated = await db.sites.find_one({"id": site_id}, {"_id": 0})
+    return updated
+
+
 @api_router.delete("/sites/{site_id}/hero-image")
 async def delete_hero_image(site_id: str, user: dict = Depends(current_user)):
     site = await db.sites.find_one({"id": site_id, "user_id": user["id"]})

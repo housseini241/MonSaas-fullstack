@@ -424,6 +424,7 @@ const EDIT_ITEMS = [
 ];
 
 function EditSection({ site, nav }) {
+  const TAB_MAP = { photos: "design", logo: "design", textes: "content", coords: "settings", adresse: "settings" };
   return (
     <div>
       <h2 className="font-bold text-[20px] text-[#0F1222] tracking-tight mb-3">
@@ -433,7 +434,7 @@ function EditSection({ site, nav }) {
         {EDIT_ITEMS.map(({ key, label, desc, icon }) => (
           <button
             key={key}
-            onClick={() => nav(`/builder/${site.id}`)}
+            onClick={() => nav(`/builder/${site.id}?tab=${TAB_MAP[key]}`)}
             className="bg-white rounded-[14px] px-4 py-4 flex items-center gap-3.5 text-left transition hover:shadow-md active:scale-[0.98]"
             style={{ border: "1.5px solid transparent", transition: "all 150ms ease" }}
             onMouseEnter={e => e.currentTarget.style.borderColor = "#E4E8F1"}
