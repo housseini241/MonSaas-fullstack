@@ -25,6 +25,7 @@ export default function Builder() {
   const [leads, setLeads] = useState([]);
 
   const [copied, setCopied] = useState(false);
+  const [uploadingKind, setUploadingKind] = useState(null); // "logo" | "hero" | null
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "preview");
 
@@ -91,6 +92,7 @@ export default function Builder() {
   };
 
   const uploadImage = async (file, kind) => {
+    setUploadingKind(kind);
     const fd = new FormData();
     fd.append("file", file);
     fd.append("kind", kind);
@@ -100,6 +102,8 @@ export default function Builder() {
       toast.success("Image mise à jour");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Erreur lors de l'upload");
+    } finally {
+      setUploadingKind(null);
     }
   };
 
@@ -262,9 +266,13 @@ export default function Builder() {
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">Logo</div>
                 <h3 className="font-display font-semibold text-xl tracking-tight mb-2">{site.logo_url ? "Logo actuel" : "Aucun logo"}</h3>
                 <p className="text-sm text-muted-foreground mb-4">Importez votre logo depuis vos fichiers ou votre galerie.</p>
-                <input type="file" accept="image/*" className="hidden" id="logo-upload" onChange={handleLogoChange} data-testid="logo-input" />
-                <Button onClick={() => document.getElementById("logo-upload")?.click()} data-testid="change-logo" className="rounded-sm bg-foreground hover:bg-primary text-white">
-                  <Plus className="w-4 h-4 mr-2" /> Changer le logo
+                <input type="file" accept="image/*" className="hidden" id="logo-upload" onChange={handleLogoChange} disabled={uploadingKind !== null} data-testid="logo-input" />
+                <Button onClick={() => document.getElementById("logo-upload")?.click()} disabled={uploadingKind === "logo"} data-testid="change-logo" className="rounded-sm bg-foreground hover:bg-primary text-white">
+                  {uploadingKind === "logo" ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-2" />
+                  )} {uploadingKind === "logo" ? "Envoi..." : "Changer le logo"}
                 </Button>
               </div>
             </div>
@@ -280,9 +288,13 @@ export default function Builder() {
                     <img src={resolveImg(site.hero_image_url)} alt="Hero" className="w-full h-48 object-cover" />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <input type="file" accept="image/*" className="hidden" id="hero-upload" onChange={handleHeroChange} data-testid="hero-input" />
-                    <Button variant="outline" onClick={() => document.getElementById("hero-upload")?.click()} className="rounded-sm" data-testid="change-hero">
-                      <Plus className="w-4 h-4 mr-2" /> Changer la photo
+                    <input type="file" accept="image/*" className="hidden" id="hero-upload" onChange={handleHeroChange} disabled={uploadingKind !== null} data-testid="hero-input" />
+                    <Button variant="outline" onClick={() => document.getElementById("hero-upload")?.click()} disabled={uploadingKind === "hero"} className="rounded-sm" data-testid="change-hero">
+                      {uploadingKind === "hero" ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4 mr-2" />
+                      )} {uploadingKind === "hero" ? "Envoi..." : "Changer la photo"}
                     </Button>
                     <Button variant="outline" onClick={deleteHero} className="rounded-sm text-destructive" data-testid="delete-hero">
                       <X className="w-4 h-4 mr-2" /> Supprimer
@@ -295,9 +307,13 @@ export default function Builder() {
                     <ImageIcon className="w-8 h-8" />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <input type="file" accept="image/*" className="hidden" id="hero-upload" onChange={handleHeroChange} data-testid="hero-input" />
-                    <Button variant="outline" onClick={() => document.getElementById("hero-upload")?.click()} className="rounded-sm" data-testid="change-hero">
-                      <Plus className="w-4 h-4 mr-2" /> Ajouter une photo
+                    <input type="file" accept="image/*" className="hidden" id="hero-upload" onChange={handleHeroChange} disabled={uploadingKind !== null} data-testid="hero-input" />
+                    <Button variant="outline" onClick={() => document.getElementById("hero-upload")?.click()} disabled={uploadingKind === "hero"} className="rounded-sm" data-testid="change-hero">
+                      {uploadingKind === "hero" ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4 mr-2" />
+                      )} {uploadingKind === "hero" ? "Envoi..." : "Ajouter une photo"}
                     </Button>
                   </div>
                 </div>

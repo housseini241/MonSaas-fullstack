@@ -2,18 +2,20 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { X, Plus, Image as ImageIcon } from "lucide-react";
+import { X, Plus, Loader2, Image as ImageIcon } from "lucide-react";
 import api, { resolveImg } from "@/lib/api";
 
 export default function RealisationsManager({ site, onReplace }) {
   const [title, setTitle] = useState("");
   const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const submit = async () => {
     if (!title.trim() || !file) {
       toast.error("Titre et image requis");
       return;
     }
+    setUploading(true);
     const fd = new FormData();
     fd.append("title", title.trim());
     fd.append("file", file);
@@ -25,6 +27,8 @@ export default function RealisationsManager({ site, onReplace }) {
       setFile(null);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Erreur lors de l'ajout");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -71,20 +75,25 @@ export default function RealisationsManager({ site, onReplace }) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[180px]">
           <label className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground block mb-2">Titre</label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex : Rénovation complète salle de bain" className="h-10 rounded-sm border-border" data-testid="realisation-title" />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={uploading} placeholder="Ex : Rénovation complète salle de bain" className="h-10 rounded-sm border-border" data-testid="realisation-title" />
         </div>
         <div className="flex-1 min-w-[180px]">
           <label className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground block mb-2">Photo</label>
           <input
             type="file"
             accept="image/*"
+            disabled={uploading}
             onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-ink-3 file:mr-3 file:rounded-sm file:border file:border-border file:bg-background file:px-3 file:py-1.5"
+            className="block w-full text-sm text-ink-3 file:mr-3 file:rounded-sm file:border file:border-border file:bg-background file:px-3 file:py-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
             data-testid="realisation-file"
           />
         </div>
-        <Button onClick={submit} className="rounded-sm" data-testid="add-realisation">
-          <Plus className="w-4 h-4 mr-2" /> Ajouter
+        <Button onClick={submit} disabled={uploading} className="rounded-sm" data-testid="add-realisation">
+          {uploading ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4 mr-2" />
+          )} {uploading ? "Ajout en cours..." : "Ajouter"}
         </Button>
       </div>
     </div>

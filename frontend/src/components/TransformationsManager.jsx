@@ -2,19 +2,21 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { X, Plus, Image as ImageIcon } from "lucide-react";
+import { X, Plus, Loader2, Image as ImageIcon } from "lucide-react";
 import api, { resolveImg } from "@/lib/api";
 
 export default function TransformationsManager({ site, onReplace }) {
   const [title, setTitle] = useState("");
   const [beforeFile, setBeforeFile] = useState(null);
   const [afterFile, setAfterFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const submit = async () => {
     if (!title.trim() || !beforeFile || !afterFile) {
       toast.error("Titre et images avant/après requis");
       return;
     }
+    setUploading(true);
     const fd = new FormData();
     fd.append("title", title.trim());
     fd.append("before", beforeFile);
@@ -28,6 +30,8 @@ export default function TransformationsManager({ site, onReplace }) {
       setAfterFile(null);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Erreur lors de l'ajout");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -83,15 +87,16 @@ export default function TransformationsManager({ site, onReplace }) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-full md:flex-1 min-w-[180px]">
           <label className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground block mb-2">Titre</label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex : Rénovation cuisine" className="h-10 rounded-sm border-border" data-testid="transformation-title" />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={uploading} placeholder="Ex : Rénovation cuisine" className="h-10 rounded-sm border-border" data-testid="transformation-title" />
         </div>
         <div className="flex-1 min-w-[150px]">
           <label className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground block mb-2">Avant</label>
           <input
             type="file"
             accept="image/*"
+            disabled={uploading}
             onChange={(e) => setBeforeFile(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-ink-3 file:mr-3 file:rounded-sm file:border file:border-border file:bg-background file:px-3 file:py-1.5"
+            className="block w-full text-sm text-ink-3 file:mr-3 file:rounded-sm file:border file:border-border file:bg-background file:px-3 file:py-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
             data-testid="transformation-before"
           />
         </div>
@@ -100,13 +105,18 @@ export default function TransformationsManager({ site, onReplace }) {
           <input
             type="file"
             accept="image/*"
+            disabled={uploading}
             onChange={(e) => setAfterFile(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-ink-3 file:mr-3 file:rounded-sm file:border file:border-border file:bg-background file:px-3 file:py-1.5"
+            className="block w-full text-sm text-ink-3 file:mr-3 file:rounded-sm file:border file:border-border file:bg-background file:px-3 file:py-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
             data-testid="transformation-after"
           />
         </div>
-        <Button onClick={submit} className="rounded-sm" data-testid="add-transformation">
-          <Plus className="w-4 h-4 mr-2" /> Ajouter
+        <Button onClick={submit} disabled={uploading} className="rounded-sm" data-testid="add-transformation">
+          {uploading ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4 mr-2" />
+          )} {uploading ? "Ajout en cours..." : "Ajouter"}
         </Button>
       </div>
     </div>

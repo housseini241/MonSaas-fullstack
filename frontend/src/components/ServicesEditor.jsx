@@ -1,8 +1,8 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Image as ImageIcon } from "lucide-react";
+import { Plus, X, Loader2, Image as ImageIcon } from "lucide-react";
 import api, { resolveImg } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -30,6 +30,7 @@ const Section = ({ title, code, children }) => (
 export default function ServicesEditor({ site, setSite, siteId }) {
   const services = site.content?.services || [];
   const fileInputs = useRef({});
+  const [uploadingIndex, setUploadingIndex] = useState(null); // index du service en cours d'upload, ou null
 
   const updateArrayItem = (idx, field, value) => {
     const arr = [...services];
@@ -52,6 +53,7 @@ export default function ServicesEditor({ site, setSite, siteId }) {
 
   const uploadServiceImage = async (index, file) => {
     if (!file) return;
+    setUploadingIndex(index);
     const fd = new FormData();
     fd.append("file", file);
     try {
@@ -60,6 +62,8 @@ export default function ServicesEditor({ site, setSite, siteId }) {
       toast.success("Photo du service mise à jour");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Erreur lors de l'upload");
+    } finally {
+      setUploadingIndex(null);
     }
   };
 
@@ -96,11 +100,15 @@ export default function ServicesEditor({ site, setSite, siteId }) {
                     <img src={resolveImg(s.image_url)} alt={s.name || `Service ${i + 1}`} className="w-full h-36 object-cover" />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} ref={(el) => (fileInputs.current[`service-image-upload-${i}`] = el)} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
-                    <Button variant="outline" onClick={() => fileInputs.current[`service-image-upload-${i}`]?.click()} className="rounded-sm" data-testid={`service-image-change-${i}`}>
-                      <Plus className="w-4 h-4 mr-2" /> Changer la photo
+                    <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} disabled={uploadingIndex !== null} ref={(el) => (fileInputs.current[`service-image-upload-${i}`] = el)} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
+                    <Button variant="outline" onClick={() => fileInputs.current[`service-image-upload-${i}`]?.click()} disabled={uploadingIndex !== null} className="rounded-sm" data-testid={`service-image-change-${i}`}>
+                      {uploadingIndex === i ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4 mr-2" />
+                      )} {uploadingIndex === i ? "Envoi..." : "Changer la photo"}
                     </Button>
-                    <Button variant="outline" onClick={() => deleteServiceImage(i)} className="rounded-sm text-destructive" data-testid={`service-image-delete-${i}`}>
+                    <Button variant="outline" onClick={() => deleteServiceImage(i)} disabled={uploadingIndex === i} className="rounded-sm text-destructive" data-testid={`service-image-delete-${i}`}>
                       <X className="w-4 h-4 mr-2" /> Supprimer
                     </Button>
                   </div>
@@ -111,9 +119,13 @@ export default function ServicesEditor({ site, setSite, siteId }) {
                     <ImageIcon className="w-8 h-8" />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} ref={(el) => (fileInputs.current[`service-image-upload-${i}`] = el)} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
-                    <Button variant="outline" onClick={() => fileInputs.current[`service-image-upload-${i}`]?.click()} className="rounded-sm" data-testid={`service-image-add-${i}`}>
-                      <Plus className="w-4 h-4 mr-2" /> Ajouter une photo
+                    <input type="file" accept="image/*" className="hidden" id={`service-image-upload-${i}`} disabled={uploadingIndex !== null} ref={(el) => (fileInputs.current[`service-image-upload-${i}`] = el)} onChange={(e) => handleServiceImageChange(i, e)} data-testid={`service-image-input-${i}`} />
+                    <Button variant="outline" onClick={() => fileInputs.current[`service-image-upload-${i}`]?.click()} disabled={uploadingIndex !== null} className="rounded-sm" data-testid={`service-image-add-${i}`}>
+                      {uploadingIndex === i ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4 mr-2" />
+                      )} {uploadingIndex === i ? "Envoi..." : "Ajouter une photo"}
                     </Button>
                   </div>
                 </>
