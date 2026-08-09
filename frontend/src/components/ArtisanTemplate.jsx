@@ -5,9 +5,9 @@ import { resolveImg } from "@/lib/api";
 import { siteBasePath } from "@/lib/subdomain";
 import { DEFAULT_THEME, ensureGoogleFontsLoaded } from "@/components/ThemePicker";
 import { DEFAULT_SECTION_ORDER } from "@/components/SectionsReorder";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
-import BeforeAfterSlider from "@/components/BeforeAfterSlider";
+import SiteHeader from "@/components/Siteheader";
+import SiteFooter from "@/components/Sitefooter";
+import BeforeAfterSlider from "@/components/Beforeafterslider";
 
 const Icon = ({ name, className }) => {
   const pascal = (name || "").split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
