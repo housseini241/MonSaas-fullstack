@@ -5,9 +5,9 @@ import { resolveImg } from "@/lib/api";
 import { siteBasePath } from "@/lib/subdomain";
 import { DEFAULT_THEME, ensureGoogleFontsLoaded } from "@/components/ThemePicker";
 import { DEFAULT_SECTION_ORDER } from "@/components/SectionsReorder";
-import SiteHeader from "@/components/Siteheader";
-import SiteFooter from "@/components/Sitefooter";
-import BeforeAfterSlider from "@/components/Beforeafterslider";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
+import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 
 const Icon = ({ name, className }) => {
   const pascal = (name || "").split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
@@ -267,7 +267,7 @@ export default function ArtisanTemplate({ site, onSubmitLead, editable = false, 
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--site-grad-b)" }} />
                 Transformation
               </div>
-              <h2 className="font-display text-4xl font-bold leading-tight max-w-lg mx-auto">Avant / après — glissez pour comparer</h2>
+              <h2 className="font-display text-4xl font-bold leading-tight max-w-lg mx-auto text-white">Avant / après — glissez pour comparer</h2>
             </div>
             <BeforeAfterSlider beforeUrl={resolveImg(featured.before_url)} afterUrl={resolveImg(featured.after_url)} />
             <div className="flex justify-center mt-9">
@@ -312,7 +312,7 @@ export default function ArtisanTemplate({ site, onSubmitLead, editable = false, 
             <div className="text-[12px] font-bold uppercase tracking-wide mb-3" style={{ color: "var(--site-grad-b)" }}>
               À propos
             </div>
-            <h2 className="font-display text-4xl font-bold leading-tight">{c.about_title}</h2>
+            <h2 className="font-display text-4xl font-bold leading-tight text-white">{c.about_title}</h2>
           </div>
           <div className="md:col-span-7">
             <p className="text-[15.5px] leading-relaxed text-[#B6BBD2]">
