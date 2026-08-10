@@ -88,6 +88,8 @@ try:
 except ImportError:
     NamecheapClient = None
 
+from services.static_generator import generate_static_html
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -117,6 +119,10 @@ ADMIN_EMAILS = {
 # ----- Local upload storage (VPS) -----
 UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "/app/uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+# ----- SEO statique : snapshots HTML des sites artisans (crawlers) -----
+STATIC_SITES_DIR = os.environ.get("STATIC_SITES_DIR", "/app/static_sites")
+os.makedirs(STATIC_SITES_DIR, exist_ok=True)
 
 
 async def upload_image_bytes(image_bytes: bytes, mime_type: str, kind: str, owner_id: str) -> Optional[str]:
@@ -498,6 +504,16 @@ async def unique_slug(base: str) -> str:
     return candidate
 
 
+async def save_static_site(site: dict) -> str:
+    """Génère et sauvegarde le snapshot HTML statique d'un site artisan (crawlers)."""
+    os.makedirs(STATIC_SITES_DIR, exist_ok=True)
+    html = await generate_static_html(site)
+    path = os.path.join(STATIC_SITES_DIR, f"{site['slug']}.html")
+    async with aiofiles.open(path, "w", encoding="utf-8") as f:
+        await f.write(html)
+    return path
+
+
 # ---------- AI Generation ----------
 SYSTEM_PROMPT = """Tu es un expert en copywriting et SEO local pour des sites internet d'artisans et PME en France.
 Tu écris en français professionnel, chaleureux, orienté conversion. Tu intègres naturellement la ville pour le SEO local.
@@ -817,6 +833,9 @@ async def generate_site(body: GenerateSiteIn, user: dict = Depends(current_user)
     }
     await db.sites.insert_one(site_doc)
     site_doc.pop("_id", None)
+
+    # SEO statique — générer le snapshot HTML pour les crawlers
+    await save_static_site(site_doc)
     return site_doc
 
 
@@ -853,6 +872,9 @@ async def update_site(site_id: str, body: SiteUpdate, user: dict = Depends(curre
     update["updated_at"] = now_iso()
     await db.sites.update_one({"id": site_id}, {"$set": update})
     updated = await db.sites.find_one({"id": site_id}, {"_id": 0})
+
+    # Régénérer le snapshot SEO statique
+    await save_static_site(updated)
     return updated
 
 
@@ -874,7 +896,22 @@ async def publish_site(site_id: str, user: dict = Depends(current_user)):
     if not site:
         raise HTTPException(status_code=404, detail="Site introuvable")
     await db.sites.update_one({"id": site_id}, {"$set": {"status": "published", "updated_at": now_iso()}})
+
+    # Régénérer le snapshot SEO statique (le site devient indexable)
+    published_site = await db.sites.find_one({"id": site_id}, {"_id": 0})
+    if published_site:
+        await save_static_site(published_site)
     return {"status": "published", "slug": site["slug"]}
+
+
+@api_router.post("/internal/regenerate-static/{slug}")
+async def regenerate_static(slug: str, user: dict = Depends(current_user)):
+    """Régénère manuellement le snapshot HTML statique d'un site."""
+    site = await db.sites.find_one({"slug": slug, "user_id": user["id"]}, {"_id": 0})
+    if not site:
+        raise HTTPException(status_code=404, detail="Site introuvable")
+    await save_static_site(site)
+    return {"status": "ok", "slug": slug}
 
 
 @api_router.delete("/sites/{site_id}")
@@ -1240,6 +1277,44 @@ async def public_site(slug: str):
     site.pop("user_id", None)
     site.pop("domain_token", None)
     return site
+
+
+@api_router.get("/public/sitemap.xml", response_class=Response)
+async def sitemap_xml():
+    sites = await db.sites.find(
+        {"status": "published"},
+        {"slug": 1, "updated_at": 1, "created_at": 1, "_id": 0},
+    ).to_list(10000)
+    urls = "\n".join([
+        f"""  <url>
+    <loc>https://hustart.fr/site/{s['slug']}</loc>
+    <lastmod>{(s.get('updated_at') or s.get('created_at') or '')[:10]}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>"""
+        for s in sites
+    ])
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{urls}
+</urlset>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+@api_router.get("/static-snapshot/{slug}")
+async def static_snapshot(slug: str):
+    """Sert le HTML statique pré-généré aux crawlers."""
+    path = os.path.join(STATIC_SITES_DIR, f"{slug}.html")
+    if not os.path.exists(path):
+        # Fallback : générer à la volée si le fichier n'existe pas encore
+        site = await db.sites.find_one({"slug": slug}, {"_id": 0})
+        if not site:
+            raise HTTPException(status_code=404, detail="Site introuvable")
+        await save_static_site(site)
+    async with aiofiles.open(path, "r", encoding="utf-8") as f:
+        html = await f.read()
+    return Response(content=html, media_type="text/html; charset=utf-8")
+
 
 
 @api_router.post("/public/sites/{slug}/leads")
@@ -3184,6 +3259,9 @@ async def create_generation_job(payload: GenerateSiteIn, user: dict = Depends(cu
     await db.sites.insert_one(site_doc)
     site_doc.pop("_id", None)
 
+    # SEO statique — générer le snapshot HTML pour les crawlers
+    await save_static_site(site_doc)
+
     # Also create a job record for status tracking
     job_id = str(uuid.uuid4())
     job_doc = {
@@ -3292,6 +3370,9 @@ async def finalize_job(job_id: str, user: dict = Depends(current_user)):
     }
     await db.sites.insert_one(site_doc)
     site_doc.pop("_id", None)
+
+    # SEO statique — générer le snapshot HTML pour les crawlers
+    await save_static_site(site_doc)
 
     # Mettre à jour le job avec le site_id créé
     await db.jobs.update_one(

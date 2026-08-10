@@ -15,6 +15,7 @@ services:
       - OLLAMA_BASE_URL=http://172.17.0.1:11434
     volumes:
       - uploads_data:/app/uploads
+      - static_sites_data:/app/static_sites
     ports:
       - "8000:8000"
     depends_on:
@@ -32,3 +33,4 @@ services:
 volumes:
   mongo_data:
   uploads_data:
+  static_sites_data:

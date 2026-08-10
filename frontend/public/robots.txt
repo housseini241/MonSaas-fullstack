@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /site/
+Disallow: /dashboard
+Disallow: /clients
+Disallow: /devis
+Disallow: /agenda
+Disallow: /admin
+Sitemap: https://hustart.fr/sitemap.xml
