@@ -30,13 +30,29 @@ export function AuthProvider({ children }) {
     return r.data.user;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await api.post("/auth/logout"); } catch (e) { /* token déjà invalide, on nettoie quand même */ }
     localStorage.removeItem("aw_token");
     setUser(null);
   };
 
+  const forgotPassword = async (email) => {
+    const r = await api.post("/auth/forgot-password", { email });
+    return r.data;
+  };
+
+  const resetPassword = async (token, new_password) => {
+    const r = await api.post("/auth/reset-password", { token, new_password });
+    return r.data;
+  };
+
+  const changePassword = async (current_password, new_password) => {
+    const r = await api.put("/auth/change-password", { current_password, new_password });
+    return r.data;
+  };
+
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, logout }}>
+    <AuthCtx.Provider value={{ user, loading, login, register, logout, forgotPassword, resetPassword, changePassword }}>
       {children}
     </AuthCtx.Provider>
   );

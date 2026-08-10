@@ -1,5 +1,5 @@
 """
-ArtisanWeb SaaS - Website-as-a-Service backend
+hustart SaaS - Website-as-a-Service backend
 FastAPI + MongoDB + JWT auth + Ollama (content) — local dev mode
 """
 import json
@@ -10,6 +10,7 @@ import asyncio
 import os
 import uuid
 import secrets as _secrets
+import hashlib
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
@@ -176,6 +177,28 @@ class TokenOut(BaseModel):
     user: UserPublic
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str = Field(min_length=6)
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=6)
+
+
+class SessionOut(BaseModel):
+    id: str
+    created_at: str
+    last_used_at: str
+    user_agent: Optional[str] = None
+    current: bool = False
+
+
 class GenerateSiteIn(BaseModel):
     business_name: str
     business_type: str
@@ -325,13 +348,44 @@ def verify_password(pwd: str, hashed: str) -> bool:
         return False
 
 
-def make_token(user_id: str) -> str:
+def hash_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+async def create_session(user_id: str, request: Optional[Request]) -> str:
+    session_id = str(uuid.uuid4())
+    await db.sessions.insert_one({
+        "id": session_id,
+        "user_id": user_id,
+        "created_at": now_iso(),
+        "last_used_at": now_iso(),
+        "user_agent": request.headers.get("user-agent") if request else None,
+        "revoked": False,
+    })
+    return session_id
+
+
+def make_token(user_id: str, session_id: str) -> str:
     payload = {
         "sub": user_id,
+        "sid": session_id,
         "iat": datetime.now(timezone.utc),
         "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXP_DAYS),
     }
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
+
+
+# ---------- Rate limiting (en mémoire, process unique OVH) ----------
+_rate_limit_buckets: Dict[str, List[float]] = {}
+
+
+def _check_rate_limit(key: str, max_attempts: int, window_seconds: int) -> None:
+    now = datetime.now(timezone.utc).timestamp()
+    bucket = _rate_limit_buckets.setdefault(key, [])
+    bucket[:] = [t for t in bucket if now - t < window_seconds]
+    if len(bucket) >= max_attempts:
+        raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+    bucket.append(now)
 
 
 async def current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
@@ -340,13 +394,31 @@ async def current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(s
     try:
         payload = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
         user_id = payload.get("sub")
+        session_id = payload.get("sid")
     except Exception:
         raise HTTPException(status_code=401, detail="Token invalide")
+    if session_id:
+        session = await db.sessions.find_one({"id": session_id, "user_id": user_id})
+        if not session or session.get("revoked"):
+            raise HTTPException(status_code=401, detail="Session expirée, veuillez vous reconnecter")
+        await db.sessions.update_one({"id": session_id}, {"$set": {"last_used_at": now_iso()}})
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=401, detail="Utilisateur introuvable")
     user = await _ensure_admin_flag(user)
     return user
+
+
+async def current_session(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
+    """Comme current_user mais renvoie aussi le session_id (pour logout / gestion sessions)."""
+    if not creds:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    try:
+        payload = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    user = await current_user(creds)
+    return {"user": user, "session_id": payload.get("sid")}
 
 
 async def _ensure_admin_flag(user: dict) -> dict:
@@ -574,7 +646,8 @@ async def send_lead_notification_email(owner_email: str, business_name: str, lea
 
 # ---------- Auth Routes ----------
 @api_router.post("/auth/register", response_model=TokenOut)
-async def register(body: RegisterIn):
+async def register(body: RegisterIn, request: Request):
+    _check_rate_limit(f"register:{request.client.host if request.client else 'unknown'}", max_attempts=10, window_seconds=3600)
     existing = await db.users.find_one({"email": body.email.lower()})
     if existing:
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
@@ -588,23 +661,110 @@ async def register(body: RegisterIn):
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
+    session_id = await create_session(user["id"], request)
     public = UserPublic(id=user["id"], email=user["email"], full_name=user["full_name"], created_at=user["created_at"], is_admin=user["is_admin"])
-    return TokenOut(access_token=make_token(user["id"]), user=public)
+    return TokenOut(access_token=make_token(user["id"], session_id), user=public)
 
 
 @api_router.post("/auth/login", response_model=TokenOut)
-async def login(body: LoginIn):
+async def login(body: LoginIn, request: Request):
+    rl_key = f"login:{body.email.lower()}:{request.client.host if request.client else 'unknown'}"
+    _check_rate_limit(rl_key, max_attempts=8, window_seconds=900)
     user = await db.users.find_one({"email": body.email.lower()})
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     user = await _ensure_admin_flag(user)
+    session_id = await create_session(user["id"], request)
     public = UserPublic(id=user["id"], email=user["email"], full_name=user["full_name"], created_at=user["created_at"], is_admin=bool(user.get("is_admin")))
-    return TokenOut(access_token=make_token(user["id"]), user=public)
+    return TokenOut(access_token=make_token(user["id"], session_id), user=public)
 
 
 @api_router.get("/auth/me", response_model=UserPublic)
 async def me(user: dict = Depends(current_user)):
     return UserPublic(id=user["id"], email=user["email"], full_name=user["full_name"], created_at=user["created_at"], is_admin=bool(user.get("is_admin")))
+
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(body: ForgotPasswordIn, request: Request):
+    _check_rate_limit(f"forgot:{body.email.lower()}", max_attempts=3, window_seconds=3600)
+    user = await db.users.find_one({"email": body.email.lower()})
+    # Réponse identique que le compte existe ou non (anti-énumération d'emails)
+    if user:
+        raw_token = _secrets.token_urlsafe(32)
+        await db.password_resets.insert_one({
+            "token_hash": hash_token(raw_token),
+            "user_id": user["id"],
+            "created_at": now_iso(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+            "used": False,
+        })
+        reset_url = f"{os.environ.get('PUBLIC_APP_URL', 'https://hustart.fr').rstrip('/')}/reset-password?token={raw_token}"
+        html = f"""
+        <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2 style="color:#4F46E5;">Réinitialisation de votre mot de passe</h2>
+          <p>Vous avez demandé à réinitialiser votre mot de passe Hustart.</p>
+          <p><a href="{reset_url}" style="display:inline-block;background:linear-gradient(90deg,#4F46E5,#22D3EE);color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;">Réinitialiser mon mot de passe</a></p>
+          <p style="color:#6B7280;font-size:13px;">Ce lien expire dans 30 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+        </div>
+        """
+        _send_email_sync(user["email"], "Réinitialisez votre mot de passe Hustart", html)
+    return {"message": "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé."}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(body: ResetPasswordIn):
+    token_hash = hash_token(body.token)
+    reset = await db.password_resets.find_one({"token_hash": token_hash, "used": False})
+    if not reset or datetime.fromisoformat(reset["expires_at"]) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Lien invalide ou expiré")
+    await db.users.update_one({"id": reset["user_id"]}, {"$set": {"password_hash": hash_password(body.new_password)}})
+    await db.password_resets.update_one({"token_hash": token_hash}, {"$set": {"used": True}})
+    await db.sessions.update_many({"user_id": reset["user_id"]}, {"$set": {"revoked": True}})
+    return {"message": "Mot de passe mis à jour. Vous pouvez vous reconnecter."}
+
+
+@api_router.put("/auth/change-password")
+async def change_password(body: ChangePasswordIn, ctx: dict = Depends(current_session)):
+    user_full = await db.users.find_one({"id": ctx["user"]["id"]})
+    if not verify_password(body.current_password, user_full["password_hash"]):
+        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    await db.users.update_one({"id": ctx["user"]["id"]}, {"$set": {"password_hash": hash_password(body.new_password)}})
+    await db.sessions.update_many(
+        {"user_id": ctx["user"]["id"], "id": {"$ne": ctx["session_id"]}},
+        {"$set": {"revoked": True}},
+    )
+    return {"message": "Mot de passe mis à jour."}
+
+
+@api_router.post("/auth/logout")
+async def logout(ctx: dict = Depends(current_session)):
+    if ctx["session_id"]:
+        await db.sessions.update_one({"id": ctx["session_id"]}, {"$set": {"revoked": True}})
+    return {"message": "Déconnecté."}
+
+
+@api_router.get("/auth/sessions", response_model=List[SessionOut])
+async def list_sessions(ctx: dict = Depends(current_session)):
+    sessions = await db.sessions.find(
+        {"user_id": ctx["user"]["id"], "revoked": False}, {"_id": 0}
+    ).sort("last_used_at", -1).to_list(50)
+    return [
+        SessionOut(
+            id=s["id"], created_at=s["created_at"], last_used_at=s["last_used_at"],
+            user_agent=s.get("user_agent"), current=(s["id"] == ctx["session_id"]),
+        )
+        for s in sessions
+    ]
+
+
+@api_router.delete("/auth/sessions/{session_id}")
+async def revoke_session(session_id: str, ctx: dict = Depends(current_session)):
+    result = await db.sessions.update_one(
+        {"id": session_id, "user_id": ctx["user"]["id"]}, {"$set": {"revoked": True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session introuvable")
+    return {"message": "Session révoquée."}
 
 
 # ---------- Plan helpers ----------
@@ -3376,7 +3536,9 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_startup():
     # Uploads locaux : le dossier est déjà créé au chargement du module
-    pass
+    await db.sessions.create_index("user_id")
+    await db.sessions.create_index("id", unique=True)
+    await db.password_resets.create_index("token_hash", unique=True)
 
 
 
