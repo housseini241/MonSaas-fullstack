@@ -1,14 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { 
-  ArrowLeft, ArrowRight, Check, Loader2, Send, Home, Building,
-  AlertTriangle,
-} from "lucide-react";
+import { Search, MapPin, Briefcase, Star, ArrowRight, Shield, FileText, Percent, Hammer, ChevronRight, LocateFixed, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,345 +11,349 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TRADES = [
-  "Plomberie", "Électricité", "Maçonnerie", "Peinture", "Menuiserie",
-  "Chauffage", "Couverture", "Carrelage", "Paysagiste", "Serrurerie",
-  "Plâtrerie", "Rénovation", "Climatisation", "Jardinage", "Nettoyage",
+  { id: "Plomberie" },
+  { id: "Électricité" },
+  { id: "Maçonnerie" },
+  { id: "Peinture" },
+  { id: "Menuiserie" },
+  { id: "Chauffage" },
+  { id: "Couverture" },
+  { id: "Carrelage" },
+  { id: "Paysagiste" },
+  { id: "Serrurerie" },
+  { id: "Plâtrerie" },
+  { id: "Rénovation" },
+  { id: "Climatisation" },
+  { id: "Jardinage" },
+  { id: "Nettoyage" },
 ];
 
-const LOGEMENTS = [
-  { value: "appartement", label: "Appartement" },
-  { value: "maison", label: "Maison" },
-  { value: "local_pro", label: "Local professionnel" },
-  { value: "autre", label: "Autre" },
-];
-
-const URGENCES = [
-  { value: "normal", label: "Normal", desc: "Sous 2-3 semaines" },
-  { value: "urgent", label: "Urgent", desc: "Sous 1 semaine" },
-  { value: "tres_urgent", label: "Très urgent", desc: "Sous 48h" },
-];
-
-export default function MarketplaceDemande() {
+export default function MarketplaceLanding() {
   const nav = useNavigate();
-  const [searchParams] = useSearchParams();
-  const artisanSlug = searchParams.get("artisan");
+  const [trades, setTrades] = useState(TRADES);
+  const [selectedTrade, setSelectedTrade] = useState("");
+  const [city, setCity] = useState("");
 
-  const [step, setStep] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [artisanInfo, setArtisanInfo] = useState(null);
+  // Proximité / région
+  const [geoStatus, setGeoStatus] = useState("idle"); // idle | loading | granted | denied
+  const [nearby, setNearby] = useState([]);
+  const [regions, setRegions] = useState([]);
 
-  const [form, setForm] = useState({
-    besoin: "",
-    urgence: "normal",
-    city: "",
-    code_postal: "",
-    type_logement: "",
-    name: "",
-    email: "",
-    phone: "",
-    artisan_slug: artisanSlug || "",
-  });
+  // Profils mis en avant (structure prête, boost payant à venir)
+  const [boosted, setBoosted] = useState([]);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  // Load artisan info if pre-selected
   useEffect(() => {
-    if (artisanSlug) {
-      axios.get(`${API}/public/artisans/${artisanSlug}`)
-        .then(r => setArtisanInfo(r.data))
-        .catch(() => {});
-    }
-  }, [artisanSlug]);
+    axios.get(`${API}/public/trades`).then(r => {
+      if (r.data?.trades) {
+        setTrades(r.data.trades.map(t => ({ id: t })));
+      }
+    }).catch(() => {});
 
-  const canProceed = () => {
-    if (step === 1) return form.besoin.length >= 10;
-    if (step === 2) return form.city.length >= 2;
-    if (step === 3) return form.name.length >= 2 && form.email.length >= 5;
-    return false;
+    axios.get(`${API}/public/artisans/regions`).then(r => setRegions(r.data || [])).catch(() => {});
+    axios.get(`${API}/public/artisans/boosted`).then(r => setBoosted(r.data || [])).catch(() => {});
+  }, []);
+
+  const distanceLabel = (km) => {
+    if (km < 2) return "à moins de 2 km";
+    if (km < 10) return "entre 2 et 10 km";
+    if (km < 30) return "entre 10 et 30 km";
+    return "à plus de 30 km";
   };
 
-  const handleSubmit = async () => {
-    if (!canProceed()) {
-      toast.error("Veuillez remplir tous les champs requis");
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus("denied");
       return;
     }
-    setSubmitting(true);
-    try {
-      await axios.post(`${API}/public/marketplace/demandes`, form);
-      setSubmitted(true);
-      toast.success("Demande envoyée avec succès !");
-    } catch (e) {
-      toast.error(e?.response?.data?.detail || "Erreur lors de l'envoi");
-    } finally {
-      setSubmitting(false);
-    }
+    setGeoStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const r = await axios.get(`${API}/public/artisans/nearby`, {
+            params: { lat: pos.coords.latitude, lng: pos.coords.longitude, radius_km: 50 },
+          });
+          setNearby(r.data || []);
+          setGeoStatus("granted");
+        } catch {
+          setGeoStatus("denied");
+        }
+      },
+      () => setGeoStatus("denied"),
+      { timeout: 8000 }
+    );
   };
 
-  const totalSteps = 3;
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (!selectedTrade && !city) return;
+    const params = new URLSearchParams();
+    if (selectedTrade) params.set("business_type", selectedTrade);
+    if (city) params.set("city", city);
+    nav(`/marketplace/artisans?${params.toString()}`);
+  };
+
+  const handleRegionClick = (region) => {
+    nav(`/marketplace/artisans?region=${encodeURIComponent(region)}`);
+  };
 
   return (
-    <div className="min-h-screen bg-[#F4F6FB]" data-testid="marketplace-demande">
-      {/* Header */}
-      <header className="border-b border-[#E4E8F1] bg-white">
-        <div className="max-w-3xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-          <Link to={artisanSlug ? `/marketplace/artisan/${artisanSlug}` : "/marketplace"} className="flex items-center gap-2">
-            <img src="/logo.png" alt="Hustart" className="w-7 h-7 object-contain" />
-            <span className="font-display font-semibold text-sm tracking-tight text-[#0F1222]">HuStart</span>
+    <div className="min-h-screen bg-[#F4F6FB]" data-testid="marketplace-landing">
+      {/* Navigation simplifiée */}
+      <header className="sticky top-4 z-30 px-4">
+        <div className="max-w-6xl mx-auto bg-white/80 backdrop-blur-xl border border-[#E4E8F1] rounded-full h-14 sm:h-16 pl-3 sm:pl-5 pr-1.5 sm:pr-2 flex items-center justify-between gap-2 shadow-[0_8px_24px_rgba(20,25,60,0.07)]">
+          <Link to="/" className="flex items-center gap-2 min-w-0">
+            <img src="/logo.png" alt="Hustart" className="w-8 h-8 shrink-0 object-contain" />
+            <span className="flex items-baseline gap-1.5 min-w-0">
+              <span className="font-display font-semibold text-sm tracking-tight text-[#0F1222] leading-none truncate">HuStart</span>
+              <span className="hidden sm:inline font-mono text-[10px] tracking-[0.2em] text-[#4F46E5] leading-none">marketplace</span>
+            </span>
           </Link>
-          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280]">
-            {!submitted && <>étape {step} / {totalSteps}</>}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <Link to="/avis" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="rounded-full text-[#4A4F6B] text-sm leading-none">Avis</Button>
+            </Link>
+            <Link to="/login">
+              <Button variant="outline" size="sm" className="rounded-full border-[1.5px] border-[#E4E8F1] text-xs sm:text-sm leading-none whitespace-nowrap px-3 sm:px-4">Connexion</Button>
+            </Link>
           </div>
         </div>
-        {/* Progress bar */}
-        {!submitted && (
-          <div className="h-1 bg-black/5">
-            <div className="h-full bg-gradient-to-r from-[#4F46E5] to-[#22D3EE] transition-all" style={{ width: `${(step / totalSteps) * 100}%` }} />
-          </div>
-        )}
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 md:px-8 py-12 md:py-16">
-        {submitted ? (
-          /* Confirmation */
-          <div className="text-center bg-white border border-[#E4E8F1] rounded-2xl p-10 md:p-14" data-testid="demande-confirmation">
-            <div className="w-16 h-16 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-8 h-8" />
+      {/* Hero avec barre de recherche */}
+      <section className="relative bg-[#0B0F1E] text-white overflow-hidden pt-24 pb-28 md:pt-32 md:pb-36">
+        <div className="absolute w-[420px] h-[420px] rounded-full bg-[#4F46E5] opacity-[0.25] blur-[90px] -top-28 -right-20 pointer-events-none" aria-hidden="true" />
+        <div className="absolute w-[300px] h-[300px] rounded-full bg-[#22D3EE] opacity-[0.25] blur-[90px] -bottom-16 left-[8%] pointer-events-none" aria-hidden="true" />
+        <div className="relative max-w-4xl mx-auto px-4 md:px-8 text-center">
+          <div className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#22D3EE] border border-[#22D3EE]/30 px-4 py-1.5 rounded-full mb-8">
+            <span className="w-1.5 h-1.5 bg-[#22D3EE] rounded-full animate-pulse" />
+            Annuaire d'artisans de confiance
+          </div>
+          <h1 className="font-display font-bold text-[40px] md:text-[60px] leading-[1.05] tracking-tight mb-4 text-white">
+            Trouvez l'artisan<br />
+            <span className="bg-gradient-to-r from-[#818CF8] to-[#67E8F9] bg-clip-text text-transparent">qu'il vous faut.</span>
+          </h1>
+          <p className="text-lg md:text-xl text-white/70 max-w-xl mx-auto mb-10">
+            Des professionnels locaux vérifiés, des devis gratuits, zéro commission.
+          </p>
+
+          {/* Barre de recherche */}
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
+            <div className="flex flex-col sm:flex-row gap-3 bg-white p-2 rounded-[28px] sm:rounded-full shadow-[0_20px_45px_rgba(0,0,0,0.25)]">
+              <div className="flex-1 rounded-full overflow-hidden">
+                <Select value={selectedTrade} onValueChange={setSelectedTrade}>
+                  <SelectTrigger className="h-14 border-0 rounded-full bg-transparent text-[#0F1222] text-base px-5 focus:ring-0 focus:ring-offset-0" data-testid="search-trade">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-[#8A90AC] shrink-0" />
+                      <SelectValue placeholder="Quel métier ?" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72 rounded-2xl">
+                    {trades.map((t) => (
+                      <SelectItem key={t.id} value={t.id} data-testid={`trade-option-${t.id}`}>
+                        {t.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1 rounded-full overflow-hidden flex items-center px-5">
+                <MapPin className="w-4 h-4 text-[#8A90AC] shrink-0 mr-2" />
+                <Input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Quelle ville ?"
+                  className="h-14 border-0 rounded-full bg-transparent text-[#0F1222] text-base px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  data-testid="search-city"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="h-14 px-8 text-white rounded-full text-base font-semibold shrink-0 border-0 transition-all hover:-translate-y-0.5"
+                style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
+                disabled={!selectedTrade && !city}
+                data-testid="search-submit"
+              >
+                Rechercher <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
             </div>
-            <h2 className="font-display font-semibold text-3xl tracking-tight text-[#0F1222] mb-3">
-              Demande envoyée !
-            </h2>
-            <p className="text-[#6B7280] text-base max-w-md mx-auto mb-2">
-              Votre demande a été transmise aux artisans de votre zone.
-            </p>
-            {artisanInfo && (
-              <p className="text-[#6B7280] text-sm mb-6">
-                <strong className="text-[#0F1222]">{artisanInfo.business_name}</strong> a reçu votre demande et vous répondra sous 24h.
-              </p>
+          </form>
+        </div>
+      </section>
+
+      {/* Près de chez vous — proximité réelle ou navigation par région */}
+      <section className="py-16 md:py-20 max-w-6xl mx-auto px-4 md:px-8">
+        <div className="text-center mb-10">
+          <h2 className="font-display font-bold text-3xl md:text-4xl tracking-tight text-[#0F1222] mb-3">
+            Près de chez vous
+          </h2>
+          <p className="text-[#6B7280] text-base">
+            Trouvez un artisan à proximité, ou parcourez par région.
+          </p>
+        </div>
+
+        {geoStatus !== "granted" && (
+          <div className="flex justify-center mb-10">
+            <button
+              type="button"
+              onClick={handleLocateMe}
+              disabled={geoStatus === "loading"}
+              data-testid="locate-me-btn"
+              className="inline-flex items-center gap-2 bg-white border border-[#E4E8F1] rounded-full px-6 py-3 text-sm font-semibold text-[#0F1222] hover:border-[#4F46E5] hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] transition-all disabled:opacity-60"
+            >
+              <LocateFixed className="w-4 h-4" style={{ color: "#4F46E5" }} />
+              {geoStatus === "loading" ? "Localisation en cours..." : "Utiliser ma position"}
+            </button>
+          </div>
+        )}
+
+        {geoStatus === "granted" ? (
+          nearby.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3" data-testid="nearby-results">
+              {nearby.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => nav(`/marketplace/artisan/${a.slug}`)}
+                  className="flex flex-col items-start gap-1 p-4 bg-white border border-[#E4E8F1] rounded-2xl hover:border-[#4F46E5] hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all text-left"
+                >
+                  <span className="font-display font-semibold text-sm text-[#0F1222] truncate w-full">{a.business_name}</span>
+                  <span className="text-xs text-[#6B7280]">{a.business_type} · {a.city}</span>
+                  <span className="text-xs font-semibold" style={{ color: "#4F46E5" }}>{distanceLabel(a.distance_km)}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-sm text-[#6B7280]">Aucun artisan trouvé à proximité pour l'instant.</p>
+          )
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="region-grid">
+            {regions.length > 0 ? (
+              regions.map((r) => (
+                <button
+                  key={r.region}
+                  onClick={() => handleRegionClick(r.region)}
+                  className="flex flex-col items-center gap-1 p-5 bg-white border border-[#E4E8F1] rounded-2xl hover:border-[#4F46E5] hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all cursor-pointer"
+                  data-testid={`region-card-${r.region}`}
+                >
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#4A4F6B] text-center leading-tight">{r.region}</span>
+                  <span className="text-xs text-[#6B7280]">{r.count} artisan{r.count > 1 ? "s" : ""}</span>
+                </button>
+              ))
+            ) : (
+              <p className="col-span-full text-center text-sm text-[#6B7280]">Les régions apparaîtront ici dès les premiers artisans inscrits.</p>
             )}
-            <p className="text-[#6B7280] text-sm mb-8">
-              Vous recevrez une réponse par email à : <strong className="text-[#0F1222]">{form.email}</strong>
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link to={artisanSlug ? `/marketplace/artisan/${artisanSlug}` : "/marketplace"}>
-                <Button variant="outline" className="rounded-xl">Retour à l'annuaire</Button>
-              </Link>
-              <Link to="/marketplace">
-                <Button className="bg-gradient-to-r from-[#4F46E5] to-[#22D3EE] hover:opacity-90 text-white rounded-xl">Accueil marketplace</Button>
-              </Link>
-            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Profils mis en avant */}
+      <section className="py-16 md:py-20 max-w-6xl mx-auto px-4 md:px-8">
+        <div className="text-center mb-10">
+          <h2 className="font-display font-bold text-3xl md:text-4xl tracking-tight text-[#0F1222] mb-3">
+            Mis en avant
+          </h2>
+          <p className="text-[#6B7280] text-base">Artisans ayant boosté leur visibilité sur la marketplace.</p>
+        </div>
+        {boosted.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-testid="boosted-grid">
+            {boosted.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => nav(`/marketplace/artisan/${a.slug}`)}
+                className="relative flex flex-col items-start gap-1 p-5 bg-white border border-[#E4E8F1] rounded-2xl hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all text-left"
+                style={{ borderColor: "#4F46E5" }}
+              >
+                <span className="absolute -top-2.5 right-4 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-white px-2.5 py-1 rounded-full" style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}>
+                  <Sparkles className="w-3 h-3" /> Sponsorisé
+                </span>
+                <span className="font-display font-semibold text-sm text-[#0F1222] truncate w-full mt-1">{a.business_name}</span>
+                <span className="text-xs text-[#6B7280]">{a.business_type} · {a.city}</span>
+              </button>
+            ))}
           </div>
         ) : (
-          <>
-            {/* En-tête */}
-            <div className="mb-10">
-              <Link
-                to={artisanSlug ? `/marketplace/artisan/${artisanSlug}` : "/marketplace"}
-                className="inline-flex items-center gap-1 text-sm text-[#4A4F6B] hover:text-[#0F1222] mb-4"
-              >
-                <ArrowLeft className="w-4 h-4" /> Retour
-              </Link>
-              <h1 className="font-display font-semibold text-3xl md:text-4xl tracking-tight text-[#0F1222] mb-2">
-                Demande de devis
-              </h1>
-              {artisanInfo ? (
-                <p className="text-[#6B7280]">
-                  Votre demande sera envoyée directement à <strong className="text-[#0F1222]">{artisanInfo.business_name}</strong> — {artisanInfo.business_type} à {artisanInfo.city}
-                </p>
-              ) : (
-                <p className="text-[#6B7280]">Décrivez votre besoin. Les artisans de votre zone vous répondront.</p>
-              )}
-            </div>
-
-            {/* Step 1 — Le besoin */}
-            {step === 1 && (
-              <section data-testid="demande-step-1" className="space-y-6">
-                <div>
-                  <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                    Quel type de travaux ? <span className="text-destructive">*</span>
-                  </Label>
-                  <Select value={form.type_travaux || ""} onValueChange={(v) => set("type_travaux", v)}>
-                    <SelectTrigger className="h-12 bg-white border-[#E4E8F1] rounded-xl" data-testid="dd-type-travaux">
-                      <SelectValue placeholder="Sélectionnez un métier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">Je ne sais pas encore</SelectItem>
-                      {TRADES.map(t => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                    Décrivez votre besoin <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    value={form.besoin}
-                    onChange={(e) => set("besoin", e.target.value)}
-                    rows={5}
-                    className="bg-white border-[#E4E8F1] rounded-xl"
-                    placeholder="Ex : Rénovation complète de salle de bain 6m², pose de carrelage au sol et faïence murale..."
-                    data-testid="dd-besoin"
-                  />
-                  <div className="text-[11px] text-[#6B7280] mt-1 font-mono">{form.besoin.length}/2000</div>
-                </div>
-
-                <div>
-                  <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-3 block">
-                    Urgence
-                  </Label>
-                  <RadioGroup value={form.urgence} onValueChange={(v) => set("urgence", v)} className="grid md:grid-cols-3 gap-3">
-                    {URGENCES.map(u => (
-                      <label key={u.value} className={`flex flex-col gap-1 p-4 border rounded-xl cursor-pointer transition-colors ${
-                        form.urgence === u.value ? "border-[#0F1222] bg-[#0F1222] text-white" : "border-[#E4E8F1] bg-white hover:border-ink-2"
-                      }`}>
-                        <RadioGroupItem value={u.value} className="sr-only" />
-                        <span className="font-medium text-sm">{u.label}</span>
-                        <span className={`text-[11px] ${form.urgence === u.value ? "text-white/70" : "text-[#6B7280]"}`}>{u.desc}</span>
-                      </label>
-                    ))}
-                  </RadioGroup>
-                </div>
-              </section>
-            )}
-
-            {/* Step 2 — Localisation */}
-            {step === 2 && (
-              <section data-testid="demande-step-2" className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                      Ville <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      value={form.city}
-                      onChange={(e) => set("city", e.target.value)}
-                      className="h-12 bg-white border-[#E4E8F1] rounded-xl"
-                      placeholder="Lyon"
-                      data-testid="dd-city"
-                    />
-                  </div>
-                  <div>
-                    <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                      Code postal
-                    </Label>
-                    <Input
-                      value={form.code_postal}
-                      onChange={(e) => set("code_postal", e.target.value)}
-                      className="h-12 bg-white border-[#E4E8F1] rounded-xl"
-                      placeholder="69000"
-                      data-testid="dd-cp"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                    Type de logement
-                  </Label>
-                  <Select value={form.type_logement} onValueChange={(v) => set("type_logement", v)}>
-                    <SelectTrigger className="h-12 bg-white border-[#E4E8F1] rounded-xl" data-testid="dd-logement">
-                      <SelectValue placeholder="Sélectionnez" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LOGEMENTS.map(l => (
-                        <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </section>
-            )}
-
-            {/* Step 3 — Coordonnées */}
-            {step === 3 && (
-              <section data-testid="demande-step-3" className="space-y-6">
-                <div>
-                  <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                    Nom complet <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={form.name}
-                    onChange={(e) => set("name", e.target.value)}
-                    className="h-12 bg-white border-[#E4E8F1] rounded-xl"
-                    placeholder="Jean Dupont"
-                    data-testid="dd-name"
-                  />
-                </div>
-                <div>
-                  <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                    Email <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => set("email", e.target.value)}
-                    className="h-12 bg-white border-[#E4E8F1] rounded-xl"
-                    placeholder="jean@exemple.fr"
-                    data-testid="dd-email"
-                  />
-                </div>
-                <div>
-                  <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6B7280] mb-2 block">
-                    Téléphone
-                  </Label>
-                  <Input
-                    value={form.phone}
-                    onChange={(e) => set("phone", e.target.value)}
-                    className="h-12 bg-white border-[#E4E8F1] rounded-xl"
-                    placeholder="06 12 34 56 78"
-                    data-testid="dd-phone"
-                  />
-                </div>
-              </section>
-            )}
-
-            {/* Navigation buttons */}
-            <div className="mt-12 flex justify-between items-center">
-              <Button
-                variant="ghost"
-                onClick={() => step > 1 ? setStep(step - 1) : nav(artisanSlug ? `/marketplace/artisan/${artisanSlug}` : "/marketplace")}
-                className="rounded-xl"
-                data-testid="dd-back"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" /> {step > 1 ? "Précédent" : "Annuler"}
-              </Button>
-
-              {step < totalSteps ? (
-                <Button
-                  disabled={!canProceed()}
-                  onClick={() => setStep(step + 1)}
-                  className="rounded-xl h-12 px-6 bg-gradient-to-r from-[#4F46E5] to-[#22D3EE] hover:opacity-90 text-white"
-                  data-testid="dd-next"
-                >
-                  Continuer <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : (
-                <Button
-                  disabled={!canProceed() || submitting}
-                  onClick={handleSubmit}
-                  className="rounded-xl h-12 px-6 bg-gradient-to-r from-[#4F46E5] to-[#22D3EE] hover:opacity-90 text-white"
-                  data-testid="dd-submit"
-                >
-                  {submitting ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi...</>
-                  ) : (
-                    <><Send className="w-4 h-4 mr-2" /> Envoyer ma demande</>
-                  )}
-                </Button>
-              )}
-            </div>
-          </>
+          <div className="text-center border border-dashed border-[#E4E8F1] rounded-2xl p-10" data-testid="boosted-empty">
+            <p className="text-sm text-[#6B7280] mb-4">Aucun profil boosté pour le moment.</p>
+            <Link to="/marketplace-settings">
+              <button type="button" className="inline-flex items-center gap-2 text-sm font-semibold text-white px-5 py-2.5 rounded-full" style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}>
+                <Sparkles className="w-4 h-4" /> Soyez le premier à booster votre profil
+              </button>
+            </Link>
+          </div>
         )}
-      </main>
+      </section>
+
+      {/* Pourquoi nous */}
+      <section className="bg-white border-y border-[#E4E8F1] py-16 md:py-20">
+        <div className="max-w-5xl mx-auto px-4 md:px-8">
+          <h2 className="font-display font-bold text-3xl md:text-4xl tracking-tight text-[#0F1222] text-center mb-12">
+            <span className="bg-gradient-to-r from-[#4F46E5] to-[#22D3EE] bg-clip-text text-transparent">Pourquoi</span> passer par nous ?
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: Shield, title: "Artisans vérifiés", desc: "Chaque professionnel est validé avant d'apparaître dans l'annuaire. Pas de surprise." },
+              { icon: FileText, title: "Devis gratuit", desc: "Recevez jusqu'à 3 propositions sans engagement. Comparez et choisissez." },
+              { icon: Percent, title: "0 commission", desc: "Nous ne prenons aucune commission sur vos chantiers. Le prix est celui de l'artisan." },
+            ].map((item, i) => (
+              <div key={i} className="text-center md:text-left bg-[#F4F6FB] rounded-2xl p-7">
+                <div
+                  className="w-11 h-11 rounded-xl text-white flex items-center justify-center mx-auto md:mx-0 mb-4"
+                  style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
+                >
+                  <item.icon className="w-5 h-5" />
+                </div>
+                <h3 className="font-display text-lg font-bold tracking-tight text-[#0F1222] mb-2">{item.title}</h3>
+                <p className="text-[#6B7280] text-sm leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Artisan */}
+      <section className="py-16 md:py-20 max-w-5xl mx-auto px-4 md:px-8 text-center">
+        <div className="relative bg-[#0B0F1E] text-white p-10 md:p-14 rounded-[28px] overflow-hidden">
+          <div className="absolute w-[300px] h-[300px] rounded-full bg-[#4F46E5] opacity-[0.25] blur-[80px] -top-16 -right-16 pointer-events-none" aria-hidden="true" />
+          <div
+            className="relative w-14 h-14 rounded-2xl text-white flex items-center justify-center mx-auto mb-5"
+            style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
+          >
+            <Hammer className="w-6 h-6" />
+          </div>
+          <h2 className="relative font-display font-bold text-3xl md:text-4xl tracking-tight mb-3 text-white">
+            Vous êtes artisan ?
+          </h2>
+          <p className="relative text-white/70 text-base max-w-lg mx-auto mb-8">
+            Rejoignez la marketplace et soyez trouvé par des clients près de chez vous. Gratuit pour les membres Pro.
+          </p>
+          <div className="relative flex justify-center">
+            <Link to="/signup">
+              <Button
+                className="text-white h-14 px-8 text-base rounded-full border-0 transition-all hover:-translate-y-0.5"
+                style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
+              >
+                Créer mon compte artisan <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-[#E4E8F1] bg-white py-10">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 text-center sm:text-left">
+          <div className="text-xs font-mono uppercase tracking-[0.2em] text-[#8A90AC]">
+            © {new Date().getFullYear()} HuStart · marketplace
+          </div>
+          <div className="flex gap-6 text-xs font-mono uppercase tracking-[0.2em] text-[#8A90AC]">
+            <Link to="/avis" className="hover:text-[#4F46E5] transition-colors">Avis clients</Link>
+            <Link to="/" className="hover:text-[#4F46E5] transition-colors">Hustart</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
