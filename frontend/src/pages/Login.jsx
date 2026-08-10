@@ -73,6 +73,11 @@ export default function Login() {
                 placeholder="••••••••"
               />
             </div>
+            <div className="text-right -mt-2">
+              <Link to="/forgot-password" className="text-xs font-semibold" style={{ color: "#4F46E5" }}>
+                Mot de passe oublié ?
+              </Link>
+            </div>
             <Button
               type="submit"
               disabled={loading}
