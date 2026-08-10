@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Search, MapPin, Briefcase, Star, ArrowRight, Shield, FileText, Percent, Hammer, ChevronRight } from "lucide-react";
+import { Search, MapPin, Briefcase, Star, ArrowRight, Shield, FileText, Percent, Hammer, ChevronRight, LocateFixed, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,21 +15,21 @@ import {
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TRADES = [
-  { id: "Plomberie", icon: "🔧" },
-  { id: "Électricité", icon: "⚡" },
-  { id: "Maçonnerie", icon: "🧱" },
-  { id: "Peinture", icon: "🎨" },
-  { id: "Menuiserie", icon: "🪚" },
-  { id: "Chauffage", icon: "🔥" },
-  { id: "Couverture", icon: "🏠" },
-  { id: "Carrelage", icon: "📐" },
-  { id: "Paysagiste", icon: "🌿" },
-  { id: "Serrurerie", icon: "🔐" },
-  { id: "Plâtrerie", icon: "🧰" },
-  { id: "Rénovation", icon: "🏗️" },
-  { id: "Climatisation", icon: "❄️" },
-  { id: "Jardinage", icon: "🌻" },
-  { id: "Nettoyage", icon: "🧹" },
+  { id: "Plomberie" },
+  { id: "Électricité" },
+  { id: "Maçonnerie" },
+  { id: "Peinture" },
+  { id: "Menuiserie" },
+  { id: "Chauffage" },
+  { id: "Couverture" },
+  { id: "Carrelage" },
+  { id: "Paysagiste" },
+  { id: "Serrurerie" },
+  { id: "Plâtrerie" },
+  { id: "Rénovation" },
+  { id: "Climatisation" },
+  { id: "Jardinage" },
+  { id: "Nettoyage" },
 ];
 
 export default function MarketplaceLanding() {
@@ -38,13 +38,54 @@ export default function MarketplaceLanding() {
   const [selectedTrade, setSelectedTrade] = useState("");
   const [city, setCity] = useState("");
 
+  // Proximité / région
+  const [geoStatus, setGeoStatus] = useState("idle"); // idle | loading | granted | denied
+  const [nearby, setNearby] = useState([]);
+  const [regions, setRegions] = useState([]);
+
+  // Profils mis en avant (structure prête, boost payant à venir)
+  const [boosted, setBoosted] = useState([]);
+
   useEffect(() => {
     axios.get(`${API}/public/trades`).then(r => {
       if (r.data?.trades) {
-        setTrades(r.data.trades.map(t => ({ id: t, icon: "🔧" })));
+        setTrades(r.data.trades.map(t => ({ id: t })));
       }
     }).catch(() => {});
+
+    axios.get(`${API}/public/artisans/regions`).then(r => setRegions(r.data || [])).catch(() => {});
+    axios.get(`${API}/public/artisans/boosted`).then(r => setBoosted(r.data || [])).catch(() => {});
   }, []);
+
+  const distanceLabel = (km) => {
+    if (km < 2) return "à moins de 2 km";
+    if (km < 10) return "entre 2 et 10 km";
+    if (km < 30) return "entre 10 et 30 km";
+    return "à plus de 30 km";
+  };
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus("denied");
+      return;
+    }
+    setGeoStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const r = await axios.get(`${API}/public/artisans/nearby`, {
+            params: { lat: pos.coords.latitude, lng: pos.coords.longitude, radius_km: 50 },
+          });
+          setNearby(r.data || []);
+          setGeoStatus("granted");
+        } catch {
+          setGeoStatus("denied");
+        }
+      },
+      () => setGeoStatus("denied"),
+      { timeout: 8000 }
+    );
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -55,8 +96,8 @@ export default function MarketplaceLanding() {
     nav(`/marketplace/artisans?${params.toString()}`);
   };
 
-  const handleTradeClick = (tradeId) => {
-    nav(`/marketplace/artisans?business_type=${encodeURIComponent(tradeId)}`);
+  const handleRegionClick = (region) => {
+    nav(`/marketplace/artisans?region=${encodeURIComponent(region)}`);
   };
 
   return (
@@ -113,7 +154,7 @@ export default function MarketplaceLanding() {
                   <SelectContent className="max-h-72 rounded-2xl">
                     {trades.map((t) => (
                       <SelectItem key={t.id} value={t.id} data-testid={`trade-option-${t.id}`}>
-                        <span className="mr-2">{t.icon}</span> {t.id}
+                        {t.id}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -143,29 +184,106 @@ export default function MarketplaceLanding() {
         </div>
       </section>
 
-      {/* Métiers en vedette */}
+      {/* Près de chez vous — proximité réelle ou navigation par région */}
       <section className="py-16 md:py-20 max-w-6xl mx-auto px-4 md:px-8">
         <div className="text-center mb-10">
           <h2 className="font-display font-bold text-3xl md:text-4xl tracking-tight text-[#0F1222] mb-3">
-            Par métier
+            Près de chez vous
           </h2>
-          <p className="text-[#6B7280] text-base">Choisissez votre domaine parmi nos 15 métiers.</p>
+          <p className="text-[#6B7280] text-base">
+            Trouvez un artisan à proximité, ou parcourez par région.
+          </p>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-          {trades.slice(0, 15).map((t) => (
+
+        {geoStatus !== "granted" && (
+          <div className="flex justify-center mb-10">
             <button
-              key={t.id}
-              onClick={() => handleTradeClick(t.id)}
-              className="flex flex-col items-center gap-2 p-5 bg-white border border-[#E4E8F1] rounded-2xl hover:border-[#4F46E5] hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all cursor-pointer"
-              data-testid={`trade-card-${t.id}`}
+              type="button"
+              onClick={handleLocateMe}
+              disabled={geoStatus === "loading"}
+              data-testid="locate-me-btn"
+              className="inline-flex items-center gap-2 bg-white border border-[#E4E8F1] rounded-full px-6 py-3 text-sm font-semibold text-[#0F1222] hover:border-[#4F46E5] hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] transition-all disabled:opacity-60"
             >
-              <span className="text-2xl md:text-3xl">{t.icon}</span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#4A4F6B] text-center leading-tight">
-                {t.id}
-              </span>
+              <LocateFixed className="w-4 h-4" style={{ color: "#4F46E5" }} />
+              {geoStatus === "loading" ? "Localisation en cours..." : "Utiliser ma position"}
             </button>
-          ))}
+          </div>
+        )}
+
+        {geoStatus === "granted" ? (
+          nearby.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3" data-testid="nearby-results">
+              {nearby.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => nav(`/marketplace/artisan/${a.slug}`)}
+                  className="flex flex-col items-start gap-1 p-4 bg-white border border-[#E4E8F1] rounded-2xl hover:border-[#4F46E5] hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all text-left"
+                >
+                  <span className="font-display font-semibold text-sm text-[#0F1222] truncate w-full">{a.business_name}</span>
+                  <span className="text-xs text-[#6B7280]">{a.business_type} · {a.city}</span>
+                  <span className="text-xs font-semibold" style={{ color: "#4F46E5" }}>{distanceLabel(a.distance_km)}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-sm text-[#6B7280]">Aucun artisan trouvé à proximité pour l'instant.</p>
+          )
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="region-grid">
+            {regions.length > 0 ? (
+              regions.map((r) => (
+                <button
+                  key={r.region}
+                  onClick={() => handleRegionClick(r.region)}
+                  className="flex flex-col items-center gap-1 p-5 bg-white border border-[#E4E8F1] rounded-2xl hover:border-[#4F46E5] hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all cursor-pointer"
+                  data-testid={`region-card-${r.region}`}
+                >
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#4A4F6B] text-center leading-tight">{r.region}</span>
+                  <span className="text-xs text-[#6B7280]">{r.count} artisan{r.count > 1 ? "s" : ""}</span>
+                </button>
+              ))
+            ) : (
+              <p className="col-span-full text-center text-sm text-[#6B7280]">Les régions apparaîtront ici dès les premiers artisans inscrits.</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Profils mis en avant */}
+      <section className="py-16 md:py-20 max-w-6xl mx-auto px-4 md:px-8">
+        <div className="text-center mb-10">
+          <h2 className="font-display font-bold text-3xl md:text-4xl tracking-tight text-[#0F1222] mb-3">
+            Mis en avant
+          </h2>
+          <p className="text-[#6B7280] text-base">Artisans ayant boosté leur visibilité sur la marketplace.</p>
         </div>
+        {boosted.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-testid="boosted-grid">
+            {boosted.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => nav(`/marketplace/artisan/${a.slug}`)}
+                className="relative flex flex-col items-start gap-1 p-5 bg-white border border-[#E4E8F1] rounded-2xl hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all text-left"
+                style={{ borderColor: "#4F46E5" }}
+              >
+                <span className="absolute -top-2.5 right-4 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-white px-2.5 py-1 rounded-full" style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}>
+                  <Sparkles className="w-3 h-3" /> Sponsorisé
+                </span>
+                <span className="font-display font-semibold text-sm text-[#0F1222] truncate w-full mt-1">{a.business_name}</span>
+                <span className="text-xs text-[#6B7280]">{a.business_type} · {a.city}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center border border-dashed border-[#E4E8F1] rounded-2xl p-10" data-testid="boosted-empty">
+            <p className="text-sm text-[#6B7280] mb-4">Aucun profil boosté pour le moment.</p>
+            <Link to="/marketplace-settings">
+              <button type="button" className="inline-flex items-center gap-2 text-sm font-semibold text-white px-5 py-2.5 rounded-full" style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}>
+                <Sparkles className="w-4 h-4" /> Soyez le premier à booster votre profil
+              </button>
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* Pourquoi nous */}
@@ -211,14 +329,16 @@ export default function MarketplaceLanding() {
           <p className="relative text-white/70 text-base max-w-lg mx-auto mb-8">
             Rejoignez la marketplace et soyez trouvé par des clients près de chez vous. Gratuit pour les membres Pro.
           </p>
-          <Link to="/signup" className="relative inline-block">
-            <Button
-              className="text-white h-14 px-8 text-base rounded-full border-0 transition-all hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
-            >
-              Créer mon compte artisan <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
-          </Link>
+          <div className="relative flex justify-center">
+            <Link to="/signup">
+              <Button
+                className="text-white h-14 px-8 text-base rounded-full border-0 transition-all hover:-translate-y-0.5"
+                style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
+              >
+                Créer mon compte artisan <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
