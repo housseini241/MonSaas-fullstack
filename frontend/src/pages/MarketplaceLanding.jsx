@@ -249,22 +249,22 @@ export default function MarketplaceLanding() {
         )}
       </section>
 
-      {/* Profils mis en avant */}
-      <section className="py-16 md:py-20 max-w-6xl mx-auto px-4 md:px-8">
-        <div className="text-center mb-10">
-          <h2 className="font-display font-bold text-3xl md:text-4xl tracking-tight text-[#0F1222] mb-3">
-            Mis en avant
-          </h2>
-          <p className="text-[#6B7280] text-base">Artisans ayant boosté leur visibilité sur la marketplace.</p>
-        </div>
-        {boosted.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4" data-testid="boosted-grid">
+      {/* Profils tendance — pas de mention "boost" côté visiteur, le badge Sponsorisé suffit.
+          Section masquée entièrement tant qu'il n'y a aucun profil (rien à afficher = rien). */}
+      {boosted.length > 0 && (
+        <section className="py-16 md:py-20">
+          <div className="max-w-6xl mx-auto px-4 md:px-8 mb-8">
+            <h2 className="font-display font-bold text-3xl md:text-4xl tracking-tight text-[#0F1222] mb-3">
+              Tendance en ce moment
+            </h2>
+            <p className="text-[#6B7280] text-base">Une sélection de professionnels à découvrir.</p>
+          </div>
+          <div className="flex gap-4 overflow-x-auto px-4 md:px-8 pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="boosted-slider">
             {boosted.map((a) => (
               <button
                 key={a.id}
                 onClick={() => nav(`/marketplace/artisan/${a.slug}`)}
-                className="relative flex flex-col items-start gap-1 p-5 bg-white border border-[#E4E8F1] rounded-2xl hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all text-left"
-                style={{ borderColor: "#4F46E5" }}
+                className="relative shrink-0 w-64 snap-start flex flex-col items-start gap-1 p-5 bg-white border border-[#E4E8F1] rounded-2xl hover:shadow-[0_10px_30px_rgba(20,25,60,0.08)] hover:-translate-y-1 transition-all text-left"
               >
                 <span className="absolute -top-2.5 right-4 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-white px-2.5 py-1 rounded-full" style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}>
                   <Sparkles className="w-3 h-3" /> Sponsorisé
@@ -274,17 +274,8 @@ export default function MarketplaceLanding() {
               </button>
             ))}
           </div>
-        ) : (
-          <div className="text-center border border-dashed border-[#E4E8F1] rounded-2xl p-10" data-testid="boosted-empty">
-            <p className="text-sm text-[#6B7280] mb-4">Aucun profil boosté pour le moment.</p>
-            <Link to="/marketplace-settings">
-              <button type="button" className="inline-flex items-center gap-2 text-sm font-semibold text-white px-5 py-2.5 rounded-full" style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}>
-                <Sparkles className="w-4 h-4" /> Soyez le premier à booster votre profil
-              </button>
-            </Link>
-          </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* Pourquoi nous */}
       <section className="bg-white border-y border-[#E4E8F1] py-16 md:py-20">
