@@ -17,8 +17,8 @@ const Icon = ({ name, className }) => {
 
 // Neutral placeholders shown until the artisan replaces them with real photos
 // (AI image generation is currently disabled — see /sites/generate).
-const NEUTRAL_HERO_IMAGE = "https://images.pexels.com/photos/8486944/pexels-photo-8486944.jpeg";
-const NEUTRAL_SERVICE_IMAGE = "https://images.pexels.com/photos/8486944/pexels-photo-8486944.jpeg";
+const NEUTRAL_HERO_IMAGE = "https://img.freepik.com/vecteurs-premium/illustration-ouvriers-du-batiment-construisent_961875-4945.jpg";
+const NEUTRAL_SERVICE_IMAGE = "https://mass-btp-paris.hustart.fr/api/api/uploads/site-service/03fe65f0-4bbb-4ac3-b41c-3762fd166473/bbd00ff1-35c7-4641-babd-43af00c1d7be.png";
 /**
  * ArtisanTemplate: the actual generated artisan website (home page).
  * - Renders content from the AI-generated structure.
