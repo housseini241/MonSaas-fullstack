@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,8 @@ import { ArrowRight, Hammer } from "lucide-react";
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const nextPath = params.get("next");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +22,7 @@ export default function Login() {
     try {
       await login(email, password);
       toast.success("Bienvenue !");
-      nav("/dashboard");
+      nav(nextPath || "/dashboard");
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Échec de connexion");
     } finally {

@@ -12,6 +12,8 @@ export default function Signup() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const intent = params.get("intent");
+  const nextPath = params.get("next");
+  const demandeId = params.get("demande_id");
   const [form, setForm] = useState({ full_name: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
@@ -23,9 +25,13 @@ export default function Signup() {
     }
     setLoading(true);
     try {
-      await register(form.email, form.password, form.full_name);
+      await register(form.email, form.password, form.full_name, demandeId);
       toast.success("Bienvenue sur Hustart !");
-      nav(intent === "shop" ? "/onboarding-shop" : "/onboarding");
+      if (nextPath) {
+        nav(nextPath);
+      } else {
+        nav(intent === "shop" ? "/onboarding-shop" : "/onboarding");
+      }
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Échec de l'inscription");
     } finally {
@@ -110,7 +116,7 @@ export default function Signup() {
           <p className="mt-8 text-sm text-[#6B7280]">
             Déjà un compte ?{" "}
             <Link
-              to="/login"
+              to={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}
               className="font-semibold underline underline-offset-4 decoration-2"
               style={{ color: "#4F46E5" }}
               data-testid="signup-to-login"

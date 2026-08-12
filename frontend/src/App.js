@@ -27,6 +27,7 @@ import Billing from "@/pages/Billing";
 import BillingSuccess from "@/pages/BillingSuccess";
 import BillingCancel from "@/pages/BillingCancel";
 import Admin from "@/pages/Admin";
+import AdminMarketplace from "@/pages/AdminMarketplace";
 import Avis from "@/pages/Avis";
 import ShopBuilder from "@/pages/ShopBuilder";
 import OnboardingShop from "@/pages/OnboardingShop";
@@ -42,6 +43,8 @@ import MarketplaceLanding from "@/pages/MarketplaceLanding";
 import MarketplaceDirectory from "@/pages/MarketplaceDirectory";
 import MarketplaceProfile from "@/pages/MarketplaceProfile";
 import MarketplaceDemande from "@/pages/MarketplaceDemande";
+import MarketplaceDemandeDetail from "@/pages/MarketplaceDemandeDetail";
+import MarketplaceDemandeRepondre from "@/pages/MarketplaceDemandeRepondre";
 import MarketplaceSettings from "@/pages/MarketplaceSettings";
 
 function Protected({ children }) {
@@ -94,6 +97,7 @@ export default function App() {
           <Route path="/billing/success" element={<Protected><BillingSuccess /></Protected>} />
           <Route path="/billing/cancel" element={<Protected><BillingCancel /></Protected>} />
           <Route path="/admin" element={<Protected><Admin /></Protected>} />
+          <Route path="/admin/marketplace" element={<Protected><AdminMarketplace /></Protected>} />
           <Route path="/shop-builder/:shopId" element={<Protected><ShopBuilder /></Protected>} />
           <Route path="/onboarding-shop" element={<Protected><OnboardingShop /></Protected>} />
           <Route path="/shop/:slug" element={<PublicShop />} />
@@ -109,6 +113,8 @@ export default function App() {
           <Route path="/marketplace/artisans" element={<MarketplaceDirectory />} />
           <Route path="/marketplace/artisan/:slug" element={<MarketplaceProfile />} />
           <Route path="/marketplace/demande" element={<MarketplaceDemande />} />
+          <Route path="/marketplace/appels-doffres/:id" element={<MarketplaceDemandeDetail />} />
+          <Route path="/appels-doffres/:id/repondre" element={<Protected><MarketplaceDemandeRepondre /></Protected>} />
           <Route path="/site/:slug" element={<PublicSite />} />
           <Route path="/site/:slug/realisations" element={<PublicRealisations />} />
           <Route path="/site/:slug/transformation" element={<PublicTransformation />} />

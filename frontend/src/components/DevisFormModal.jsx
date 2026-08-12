@@ -22,11 +22,11 @@ function fmt(amount) {
   }).format(amount || 0);
 }
 
-export default function DevisFormModal({ onClose, onSuccess, devisId = null }) {
+export default function DevisFormModal({ onClose, onSuccess, devisId = null, presetClientId = null }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    client_id: "",
+    client_id: presetClientId || "",
     date: new Date().toISOString().split('T')[0],
     validite_jours: 30,
     tva_pourcent: 20.0,
@@ -118,12 +118,13 @@ export default function DevisFormModal({ onClose, onSuccess, devisId = null }) {
 
     setLoading(true);
     try {
+      let result;
       if (devisId) {
-        await api.put(`/artisan/devis/${devisId}`, formData);
+        result = await api.put(`/artisan/devis/${devisId}`, formData);
       } else {
-        await api.post("/artisan/devis", formData);
+        result = await api.post("/artisan/devis", formData);
       }
-      onSuccess();
+      onSuccess(result.data);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Erreur lors de la sauvegarde");
     } finally {

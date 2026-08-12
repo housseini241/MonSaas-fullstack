@@ -81,6 +81,15 @@ from marketplace_routes import (
     update_visibility,
     get_visibility,
     list_trades,
+    admin_create_demande,
+    admin_list_demandes,
+    admin_update_demande,
+    admin_delete_demande,
+    admin_send_campaign,
+    admin_marketplace_stats,
+    get_public_demande,
+    artisan_repondre_demande,
+    artisan_confirm_devis_sent,
 )
 
 try:
@@ -170,6 +179,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
     full_name: str = Field(min_length=1)
+    converted_from_demande_id: Optional[str] = None
 
 
 class LoginIn(BaseModel):
@@ -329,6 +339,31 @@ class DemandeIn(BaseModel):
     artisan_slug: Optional[str] = Field(default=None, max_length=60)
     type_logement: Optional[str] = Field(default=None, max_length=60)
     code_postal: Optional[str] = Field(default=None, max_length=10)
+
+
+class AdminDemandeIn(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    email: EmailStr
+    phone: Optional[str] = Field(default=None, max_length=20)
+    city: str = Field(min_length=2, max_length=100)
+    code_postal: Optional[str] = Field(default=None, max_length=10)
+    besoin: str = Field(min_length=10, max_length=2000)
+    urgence: str = Field(default="normal", pattern=r"^(normal|urgent|tres_urgent)$")
+    type_travaux: Optional[str] = Field(default=None, max_length=60)
+    type_logement: Optional[str] = Field(default=None, max_length=60)
+    origin_note: Optional[str] = Field(default=None, max_length=300)
+
+
+class AdminDemandeUpdate(BaseModel):
+    status: Optional[str] = Field(default=None, pattern=r"^(nouvelle|en_cours|pourvue|archivee)$")
+    public_teaser: Optional[str] = Field(default=None, max_length=300)
+
+
+class AdminCampaignIn(BaseModel):
+    demande_id: str
+    trade: Optional[str] = None
+    city: Optional[str] = None
+    artisan_emails: Optional[List[EmailStr]] = None  # override manuel de la cible
 
 
 class VisibilityUpdate(BaseModel):
@@ -674,6 +709,7 @@ async def register(body: RegisterIn, request: Request):
         "password_hash": hash_password(body.password),
         "full_name": body.full_name,
         "is_admin": is_admin_bootstrap,
+        "converted_from_demande_id": body.converted_from_demande_id,
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
@@ -3578,6 +3614,65 @@ async def api_submit_demande(body: DemandeIn):
 @api_router.get("/public/trades")
 async def api_list_trades():
     return await list_trades()
+
+
+# =============================================================================
+# MARKETPLACE ROUTES (admin uniquement)
+# =============================================================================
+
+@api_router.post("/admin/marketplace/demandes")
+async def api_admin_create_demande(body: AdminDemandeIn, admin: dict = Depends(admin_only)):
+    return await admin_create_demande(db, body, admin)
+
+
+@api_router.get("/admin/marketplace/demandes")
+async def api_admin_list_demandes(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    source: Optional[str] = Query(None),
+    page: int = Query(1, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=100),
+    _admin: dict = Depends(admin_only),
+):
+    return await admin_list_demandes(db, status_filter, source, page, limit)
+
+
+@api_router.put("/admin/marketplace/demandes/{demande_id}")
+async def api_admin_update_demande(demande_id: str, body: AdminDemandeUpdate, _admin: dict = Depends(admin_only)):
+    return await admin_update_demande(db, demande_id, body)
+
+
+@api_router.delete("/admin/marketplace/demandes/{demande_id}")
+async def api_admin_delete_demande(demande_id: str, _admin: dict = Depends(admin_only)):
+    return await admin_delete_demande(db, demande_id)
+
+
+@api_router.post("/admin/marketplace/campaigns")
+async def api_admin_send_campaign(body: AdminCampaignIn, _admin: dict = Depends(admin_only)):
+    return await admin_send_campaign(db, body)
+
+
+@api_router.get("/admin/marketplace/stats")
+async def api_admin_marketplace_stats(_admin: dict = Depends(admin_only)):
+    return await admin_marketplace_stats(db)
+
+
+# =============================================================================
+# MARKETPLACE — réponse artisan à un appel d'offres
+# =============================================================================
+
+@api_router.get("/public/marketplace/demandes/{demande_id}")
+async def api_get_public_demande(demande_id: str):
+    return await get_public_demande(db, demande_id)
+
+
+@artisan_api.post("/marketplace/demandes/{demande_id}/repondre")
+async def api_artisan_repondre_demande(demande_id: str, user: dict = Depends(current_user)):
+    return await artisan_repondre_demande(db, demande_id, user)
+
+
+@artisan_api.post("/marketplace/demandes/{demande_id}/confirm-sent")
+async def api_artisan_confirm_devis_sent(demande_id: str, body: Dict[str, Any], user: dict = Depends(current_user)):
+    return await artisan_confirm_devis_sent(db, demande_id, user, body.get("devis_id"))
 
 
 # =============================================================================

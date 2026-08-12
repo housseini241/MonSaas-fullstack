@@ -36,7 +36,8 @@ class Client(BaseModel):
     notes: Optional[str] = None
     statut_pipeline: str = "nouveau"  # nouveau, appeler, a_rappeler, signe
     pipeline_updated_at: Optional[str] = None
-    source: Optional[str] = None  # site_web, manuel
+    source: Optional[str] = None  # site_web, manuel, appel_offre
+    demande_id: Optional[str] = None
     site_id: Optional[str] = None
     site_slug: Optional[str] = None
     created_at: str

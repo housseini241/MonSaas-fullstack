@@ -84,7 +84,9 @@ export default function AppShell({ children, title, eyebrow, actions }) {
             <SidebarItem key={item.to} {...item} />
           ))}
           {user?.is_admin && (
-            <>              <SidebarItem to="/admin" label="Admin" icon={Shield} />
+            <>
+              <SidebarItem to="/admin" label="Admin" icon={Shield} />
+              <SidebarItem to="/admin/marketplace" label="Appels d'offres" icon={Store} />
             </>
           )}
         </nav>
@@ -127,7 +129,12 @@ export default function AppShell({ children, title, eyebrow, actions }) {
               {NAV.map((item) => (
                 <SidebarItem key={item.to} {...item} onClick={() => setMobileOpen(false)} />
               ))}
-              {user?.is_admin && <SidebarItem to="/admin" label="Admin" icon={Shield} onClick={() => setMobileOpen(false)} />}
+              {user?.is_admin && (
+                <>
+                  <SidebarItem to="/admin" label="Admin" icon={Shield} onClick={() => setMobileOpen(false)} />
+                  <SidebarItem to="/admin/marketplace" label="Appels d'offres" icon={Store} onClick={() => setMobileOpen(false)} />
+                </>
+              )}
             </nav>
             <div className="border-t border-border p-3">
               <Button variant="outline" size="sm" className="w-full" onClick={() => { logout(); nav("/"); }}>
