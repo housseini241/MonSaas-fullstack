@@ -713,28 +713,6 @@ export default function Sites() {
       >
         <div className="max-w-md mx-auto px-4 py-6 flex flex-col gap-6">
 
-          {/* Banner plan */}
-          {billing && billing.plan !== "pro" && (
-            <div
-              className="bg-white rounded-2xl px-4 py-4 flex flex-wrap items-center gap-3"
-              style={{ border: "1px solid #E4E8F1" }}
-            >
-              <div className="flex-1 text-sm" style={{ color: "#4A4F6B" }}>
-                <span className="font-bold" style={{ color: "#0F1222" }}>
-                  {sites.length}/{billing.site_limit} site max.
-                </span>
-                {" "}— Passez à Pro pour le domaine personnalisé et la boutique.
-              </div>
-              <button
-                onClick={() => nav("/billing")}
-                className="h-9 px-4 rounded-xl text-white text-sm font-bold flex items-center gap-1.5 transition hover:opacity-90 active:scale-95"
-                style={{ background: "linear-gradient(120deg, #4F46E5, #22D3EE)" }}
-                data-testid="upgrade-pro-btn"
-              >
-                <Sparkles className="w-3.5 h-3.5" /> Passer à Pro
-              </button>
-            </div>
-          )}
 
           {/* Loading */}
           {loading ? (
