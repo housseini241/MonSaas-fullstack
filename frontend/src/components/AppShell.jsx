@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import InstallPWAButton from "@/components/InstallPWAButton";
+import FloatingTabBar from "@/components/FloatingTabBar";
 import {
   LayoutGrid, Globe, Users, CalendarRange,
   Link2, CreditCard, Shield, LogOut, Menu, X, ChevronRight, Store,
@@ -183,19 +184,22 @@ export default function AppShell({ children, title, eyebrow, actions }) {
           </div>
         )}
 
-        <main className="flex-1 px-4 md:px-8 py-10">
+        <main className="flex-1 px-4 md:px-8 py-10 pb-28 lg:pb-10">
           <div className="max-w-7xl mx-auto fade-up">
             {children}
           </div>
         </main>
 
-        <footer className="px-4 md:px-8 py-6 border-t border-border bg-surface/40">
+        <footer className="hidden lg:block px-4 md:px-8 py-6 border-t border-border bg-surface/40">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 t-label">
             <span>© 2026 HuStart · MADE WITH CRAFT</span>
             <span>SaaS · v2.0</span>
           </div>
         </footer>
       </div>
+
+      {/* Footer flottant intelligent (mobile/tablette) */}
+      <FloatingTabBar />
     </div>
   );
 }
