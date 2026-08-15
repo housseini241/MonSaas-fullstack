@@ -212,3 +212,72 @@ class VisibilityUpdate(BaseModel):
     disponibilite: Optional[str] = Field(default=None, pattern=r"^(disponible|occupe|conges)$")
     zone_km: Optional[int] = Field(default=None, ge=1, le=200)
     gallery: Optional[List[str]] = Field(default=None, max_length=10)
+
+
+# ---------- E-Commerce Models ----------
+class ShopCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    city: Optional[str] = None
+    description: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
+
+class ShopUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    description: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    tax_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    currency: Optional[str] = None
+    shipping_rates: Optional[List[Dict[str, Any]]] = None
+    theme: Optional[Dict[str, Any]] = None
+    logo_url: Optional[str] = None
+    hero_image_url: Optional[str] = None
+    slug: Optional[str] = Field(default=None, min_length=3, max_length=60)
+
+
+class ProductIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    description: Optional[str] = None
+    price_cents: int = Field(ge=0)
+    compare_at_cents: Optional[int] = Field(default=None, ge=0)
+    stock: int = Field(ge=0, default=0)
+    category: Optional[str] = None
+    images: Optional[List[str]] = None
+    variants: Optional[List[Dict[str, Any]]] = None
+    active: bool = True
+
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price_cents: Optional[int] = Field(default=None, ge=0)
+    compare_at_cents: Optional[int] = Field(default=None, ge=0)
+    stock: Optional[int] = Field(default=None, ge=0)
+    category: Optional[str] = None
+    images: Optional[List[str]] = None
+    variants: Optional[List[Dict[str, Any]]] = None
+    active: Optional[bool] = None
+
+
+class CartItemIn(BaseModel):
+    product_id: str
+    qty: int = Field(ge=1, le=50)
+    variant: Optional[Dict[str, str]] = None
+
+
+class CheckoutShopIn(BaseModel):
+    items: List[CartItemIn]
+    customer_name: str = Field(min_length=2, max_length=120)
+    customer_email: EmailStr
+    customer_phone: Optional[str] = None
+    shipping_method_id: str
+    shipping_address: Optional[str] = None
+    origin_url: str
+
+
+class OrderStatusUpdate(BaseModel):
+    status: str
