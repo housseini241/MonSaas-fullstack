@@ -281,3 +281,11 @@ class CheckoutShopIn(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: str
+
+
+# ---------- Domain Marketplace Models ----------
+class DomainPurchaseIn(BaseModel):
+    domain: str = Field(min_length=4, max_length=253)
+    project_id: Optional[str] = None
+    project_kind: str = Field(default="site")
+    origin_url: str
