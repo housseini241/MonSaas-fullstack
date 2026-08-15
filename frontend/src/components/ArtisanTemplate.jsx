@@ -27,7 +27,7 @@ const NEUTRAL_SERVICE_IMAGE = "https://mass-btp-paris.hustart.fr/api/api/uploads
  * - editable: when true, allows inline editing of certain text fields (used in Builder).
  * - Uses site.theme (colors + fonts) and site.section_order to customize rendering.
  */
-export default function ArtisanTemplate({ site, onSubmitLead, editable = false, onEdit }) {
+export default function ArtisanTemplate({ site, onSubmitLead, editable = false, onEdit, isPreview = false }) {
   const c = site.content || {};
   const [lead, setLead] = useState({ name: "", email: "", phone: "", message: "" });
   const [sent, setSent] = useState(false);
@@ -190,16 +190,30 @@ export default function ArtisanTemplate({ site, onSubmitLead, editable = false, 
 
         <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
           {filteredServices.map((s, i) => (
-            <article key={i} className="bg-[#F4F6FB] rounded-2xl overflow-hidden group transition-transform hover:-translate-y-1" data-testid={`service-${i}`}>
-              <div className="aspect-[4/3] overflow-hidden">
-                <img
-                  src={resolveImg(s.image_url) || serviceImageFallback}
-                  alt={s.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              </div>
-              <div className="p-6">
+            <article
+              key={i}
+              className={`bg-[#F4F6FB] rounded-2xl overflow-hidden group transition-transform hover:-translate-y-1 ${isPreview ? "p-6" : ""}`}
+              data-testid={`service-${i}`}
+            >
+              {!isPreview && (
+                <div className="aspect-[4/3] overflow-hidden">
+                  <img
+                    src={resolveImg(s.image_url) || serviceImageFallback}
+                    alt={s.name}
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                </div>
+              )}
+              {isPreview && (
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4"
+                  style={{ background: "linear-gradient(120deg, var(--site-grad-a), var(--site-grad-b))" }}
+                >
+                  <Icon name="wrench" className="w-5 h-5" />
+                </div>
+              )}
+              <div className={isPreview ? "" : "p-6"}>
                 <div className="text-[11px] font-bold mb-2" style={{ color: "var(--site-grad-a)" }}>
                   {(s.activity || site.business_type)} / 0{i + 1}
                 </div>
