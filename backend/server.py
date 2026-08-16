@@ -151,7 +151,7 @@ async def upload_image_bytes(image_bytes: bytes, mime_type: str, kind: str, owne
 
 PACKAGES = {
     "pro_monthly": {"amount": 19.00, "currency": "eur", "label": "Pro · 30 jours", "days": 30},
-    "pro_yearly": {"amount": 190.00, "currency": "eur", "label": "Pro · 12 mois (-17%)", "days": 365},
+    "pro_yearly": {"amount": 185.00, "currency": "eur", "label": "Pro · 12 mois (-67%)", "days": 365},
 }
 FREE_SITE_LIMIT = 1
 
@@ -176,6 +176,8 @@ from models import (
     ChangePasswordIn,
     SessionOut,
     GenerateSiteIn,
+    PreviewSiteIn,
+    CheckoutPreviewIn,
     SiteContent,
     Site,
     SiteUpdate,
@@ -190,6 +192,12 @@ from models import (
     AdminDemandeUpdate,
     AdminCampaignIn,
     VisibilityUpdate,
+)
+
+from preview_routes import (
+    create_preview_draft,
+    create_preview_checkout,
+    finalize_preview_if_paid,
 )
 
 
@@ -917,6 +925,29 @@ async def delete_hero_image(site_id: str, user: dict = Depends(current_user)):
     return {"hero_image_url": None}
 
 
+# ---------- Preview de site avant paiement ----------
+@api_router.post("/sites/preview")
+async def sites_preview(payload: PreviewSiteIn, user: dict = Depends(current_user)):
+    return await create_preview_draft(db, payload, user, generate_content_with_claude)
+
+
+@api_router.post("/sites/preview/checkout")
+async def sites_preview_checkout(body: CheckoutPreviewIn, user: dict = Depends(current_user)):
+    return await create_preview_checkout(
+        db, body, user, STRIPE_API_KEY, StripeCheckout, CheckoutSessionRequest, PACKAGES,
+    )
+
+
+@api_router.get("/sites/preview/status/{session_id}")
+async def sites_preview_status(session_id: str, user: dict = Depends(current_user)):
+    result = await finalize_preview_if_paid(
+        db, session_id, STRIPE_API_KEY, StripeCheckout, save_static_site, slugify, unique_slug, PACKAGES,
+    )
+    if not result.get("handled"):
+        raise HTTPException(status_code=404, detail="Session introuvable")
+    return result
+
+
 # ---------- Réalisations (auth) ----------
 
 @api_router.post("/sites/{site_id}/realisations")
@@ -1420,7 +1451,14 @@ async def stripe_webhook(request: Request):
                 if shop_order:
                     await apply_shop_order_if_paid(db, event.session_id, _stripe_deps, _email_deps)
                 else:
-                    await _apply_pro_credit_if_paid(event.session_id)
+                    pending_site = await db.pending_sites.find_one({"stripe_session_id": event.session_id}, {"_id": 0, "id": 1})
+                    if pending_site:
+                        await finalize_preview_if_paid(
+                            db, event.session_id, STRIPE_API_KEY, StripeCheckout,
+                            save_static_site, slugify, unique_slug, PACKAGES,
+                        )
+                    else:
+                        await _apply_pro_credit_if_paid(event.session_id)
         return {"ok": True}
     except Exception as e:
         logger.error(f"Stripe webhook error: {e}")
@@ -2864,6 +2902,11 @@ async def on_startup():
     await db.sessions.create_index("user_id")
     await db.sessions.create_index("id", unique=True)
     await db.password_resets.create_index("token_hash", unique=True)
+
+    # Drafts de preview : nettoyage automatique après 7 jours
+    existing_indexes = await db.pending_sites.index_information()
+    if not any(info.get("expireAfterSeconds") == 604800 for info in existing_indexes.values()):
+        await db.pending_sites.create_index("created_at", expireAfterSeconds=604800)
 
 
 

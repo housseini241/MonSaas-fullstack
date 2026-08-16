@@ -19,6 +19,9 @@ import Agenda from "@/pages/Agenda";
 import DevisDetail from "@/pages/DevisDetail";
 import Onboarding from "@/pages/Onboarding";
 import Generating from "@/pages/Generating";
+import Preview from "@/pages/Preview";
+import PreviewPlans from "@/pages/PreviewPlans";
+import PreviewSuccess from "@/pages/PreviewSuccess";
 import Builder from "@/pages/Builder";
 import PublicSite from "@/pages/PublicSite";
 import PublicRealisations from "@/pages/Publicrealisations";
@@ -92,6 +95,9 @@ export default function App() {
           <Route path="/devis/:devisId" element={<Protected><DevisDetail /></Protected>} />
           <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
           <Route path="/generating" element={<Protected><Generating /></Protected>} />
+          <Route path="/preview" element={<Protected><Preview /></Protected>} />
+          <Route path="/preview/plans" element={<Protected><PreviewPlans /></Protected>} />
+          <Route path="/preview/success" element={<Protected><PreviewSuccess /></Protected>} />
           <Route path="/builder/:siteId" element={<Protected><Builder /></Protected>} />
           <Route path="/billing" element={<Protected><Billing /></Protected>} />
           <Route path="/billing/success" element={<Protected><BillingSuccess /></Protected>} />

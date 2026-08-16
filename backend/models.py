@@ -68,6 +68,17 @@ class GenerateSiteIn(BaseModel):
     generate_image: bool = True
 
 
+class PreviewSiteIn(GenerateSiteIn):
+    """Identique à GenerateSiteIn — payload complet de l'onboarding, utilisé pour générer une preview non persistée."""
+    pass
+
+
+class CheckoutPreviewIn(BaseModel):
+    draft_id: str
+    package_id: str   # "pro_monthly" ou "pro_yearly"
+    origin_url: str
+
+
 class SiteContent(BaseModel):
     tagline: str
     hero_title: str
