@@ -42,35 +42,94 @@ try:
 except ImportError:
     stripe_sdk = None
 
-# emergentintegrations n'est pas dispo en local - on fait un fallback
-try:
-    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-except ImportError:
-    class StripeCheckout:
-        def __init__(self, *args, **kwargs): pass
-        async def create_checkout_session(self, req):
-            raise Exception("Stripe désactivé en mode local")
-        async def get_checkout_status(self, *args):
-            class R:
-                payment_status = "unpaid"
-                status = "open"
-            return R()
-        async def handle_webhook(self, *args):
-            class E:
-                session_id = None
-            return E()
 
-    class CheckoutSessionRequest:
-        def __init__(self, **kwargs):
-            for k, v in kwargs.items():
-                setattr(self, k, v)
+class CheckoutSessionRequest:
+    """Conserve la même interface que l'ancien wrapper emergentintegrations pour ne rien casser aux points d'appel existants."""
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
-    class LlmChat:
-        pass
 
-    class UserMessage:
-        pass
+class _CheckoutSessionResult:
+    def __init__(self, session_id, url):
+        self.session_id = session_id
+        self.url = url
+
+
+class _CheckoutStatusResult:
+    def __init__(self, payment_status, status):
+        self.payment_status = payment_status
+        self.status = status
+
+
+class _WebhookEvent:
+    def __init__(self, session_id):
+        self.session_id = session_id
+
+
+class StripeCheckout:
+    """Réimplémentation basée sur le SDK Stripe officiel (`stripe==15.0.1`, déjà dans requirements.txt).
+    Interface strictement identique à l'ancien wrapper emergentintegrations pour zéro impact
+    sur les points d'appel existants (/billing/checkout, achat domaine, renouvellement, /sites/preview/checkout)."""
+
+    def __init__(self, api_key: str, webhook_url: str = ""):
+        self.api_key = api_key
+        self.webhook_url = webhook_url
+        if stripe_sdk:
+            stripe_sdk.api_key = api_key
+
+    async def create_checkout_session(self, req: "CheckoutSessionRequest"):
+        if not stripe_sdk:
+            raise Exception("Le SDK stripe n'est pas installé (pip install stripe)")
+
+        # Stripe attend le montant en plus petite unité monétaire (centimes pour l'EUR)
+        unit_amount = int(round(float(req.amount) * 100))
+
+        session = await asyncio.to_thread(
+            stripe_sdk.checkout.Session.create,
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": req.currency,
+                    "unit_amount": unit_amount,
+                    "product_data": {"name": "Hustart"},
+                },
+                "quantity": 1,
+            }],
+            success_url=req.success_url,
+            cancel_url=req.cancel_url,
+            metadata=getattr(req, "metadata", {}) or {},
+        )
+        return _CheckoutSessionResult(session_id=session.id, url=session.url)
+
+    async def get_checkout_status(self, session_id: str):
+        if not stripe_sdk:
+            return _CheckoutStatusResult(payment_status="unpaid", status="open")
+        session = await asyncio.to_thread(stripe_sdk.checkout.Session.retrieve, session_id)
+        return _CheckoutStatusResult(payment_status=session.payment_status, status=session.status)
+
+    async def handle_webhook(self, body_bytes: bytes, sig: str):
+        if not stripe_sdk:
+            return _WebhookEvent(session_id=None)
+        webhook_secret = STRIPE_WEBHOOK_SECRET
+        try:
+            if webhook_secret:
+                event = stripe_sdk.Webhook.construct_event(body_bytes, sig, webhook_secret)
+            else:
+                # Pas de secret configuré : on parse sans vérifier la signature (dev uniquement)
+                event = json.loads(body_bytes)
+        except Exception as e:
+            logger.error(f"Stripe webhook signature/parsing error: {e}")
+            return _WebhookEvent(session_id=None)
+
+        data_obj = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event["data"]["object"]
+        session_id = data_obj.get("id") if isinstance(data_obj, dict) else getattr(data_obj, "id", None)
+        return _WebhookEvent(session_id=session_id)
+
+
+class LlmChat:
+    pass
 
 from app_settings_defaults import DEFAULT_APP_SETTINGS
 from artisan_routes import artisan_router
