@@ -34,7 +34,7 @@ export default function BurgerMenu() {
   const handleLogout = () => {
     logout();
     close();
-    nav("/");
+    nav("/login");
   };
 
   return (

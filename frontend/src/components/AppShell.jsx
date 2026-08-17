@@ -101,7 +101,7 @@ export default function AppShell({ children, title, eyebrow, actions }) {
               <div className="text-[10px] font-mono text-ink-3 truncate">{user?.email}</div>
             </div>
             <button
-              onClick={() => { logout(); nav("/"); }}
+              onClick={() => { logout(); nav("/login"); }}
               data-testid="logout-btn"
               className="text-ink-3 hover:text-destructive transition-colors"
               title="Déconnexion"
@@ -138,7 +138,7 @@ export default function AppShell({ children, title, eyebrow, actions }) {
               )}
             </nav>
             <div className="border-t border-border p-3">
-              <Button variant="outline" size="sm" className="w-full" onClick={() => { logout(); nav("/"); }}>
+              <Button variant="outline" size="sm" className="w-full" onClick={() => { logout(); nav("/login"); }}>
                 <LogOut className="w-4 h-4 mr-2" /> Déconnexion
               </Button>
             </div>
