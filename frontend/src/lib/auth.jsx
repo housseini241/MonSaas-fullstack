@@ -12,7 +12,14 @@ export function AuthProvider({ children }) {
     if (!token) { setLoading(false); return; }
     api.get("/auth/me")
       .then((r) => setUser(r.data))
-      .catch(() => localStorage.removeItem("aw_token"))
+      .catch((err) => {
+        // Ne supprimer le token que si le serveur confirme qu'il est invalide (401).
+        // Sur erreur réseau / 5xx / timeout (ex: déploiement en cours), on garde
+        // le token pour ne pas déconnecter l'utilisateur inutilement.
+        if (err?.response?.status === 401) {
+          localStorage.removeItem("aw_token");
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
