@@ -205,14 +205,6 @@ export default function ArtisanTemplate({ site, onSubmitLead, editable = false, 
                   />
                 </div>
               )}
-              {isPreview && (
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white mb-4"
-                  style={{ background: "linear-gradient(120deg, var(--site-grad-a), var(--site-grad-b))" }}
-                >
-                  <Icon name="wrench" className="w-5 h-5" />
-                </div>
-              )}
               <div className={isPreview ? "" : "p-6"}>
                 <div className="text-[11px] font-bold mb-2" style={{ color: "var(--site-grad-a)" }}>
                   {(s.activity || site.business_type)} / 0{i + 1}
