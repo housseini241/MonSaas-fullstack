@@ -285,9 +285,7 @@ function SiteCard({ site, onDelete, nav }) {
         {/* Nom + badge */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-[24px] font-bold text-[#0F1222] leading-tight tracking-tight">
-              Bonjour {name}
-            </h2>
+            
             {site.business_type && (
               <p className="text-[11px] font-medium text-[#6B7280] uppercase tracking-[0.09em] mt-0.5">
                 {site.business_type}{site.city ? ` · ${site.city}` : ""}

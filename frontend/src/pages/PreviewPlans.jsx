@@ -6,11 +6,11 @@ import { ArrowLeft, CheckCircle2, Loader2, Sparkles, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const BENEFITS = [
-  "Votre site pro en ligne, généré à partir de vos infos, modifiable à tout moment (textes, photos, services) — sans aucune compétence technique",
-  "Votre propre nom de domaine (monentreprise.fr) au lieu d'une adresse générique",
-  "Fiche sur l'annuaire Hustart — visibilité supplémentaire auprès de clients qui cherchent un artisan",
-  "Référencement Google (SEO local) — votre site optimisé pour apparaître quand un client cherche votre métier dans votre ville",
-  "Demandes de devis reçues par email ET WhatsApp — aucune demande ratée",
+  "Votre site pro en ligne, généré à partir de vos infos, facile à modifier (textes, photos, services)",
+  "Votre propre nom de domaine monentreprise.fr",
+  "Fiche sur l'annuaire Hustart pour une visibilité supplémentaire auprès de clients qui cherchent un artisan",
+  "Votre site optimisé pour apparaître quand un client cherche votre métier dans votre ville",
+  "Demandes de devis reçues par email et WhatsApp",
   "Devis et factures illimités, envoyés par email, avec signature électronique du client directement en ligne",
   "Facturation électronique conforme à la réforme obligatoire de 2026 (Factur-X)",
   "Agenda et rendez-vous clients centralisés",

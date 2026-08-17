@@ -72,7 +72,7 @@ function HeroProfileSelector({ s, onSelectPro }) {
             className="group flex-1 flex items-center gap-4 p-6 bg-white border-[1.5px] border-[#E4E8F1] rounded-[20px] text-left cursor-pointer shadow-[0_8px_24px_rgba(20,25,60,0.07)] transition-all hover:-translate-y-1 hover:border-[#4F46E5]/40"
           >
             <div className="flex-1 min-w-0">
-              <div className="font-display font-bold text-lg mb-1.5">Je suis unartisan</div>
+              <div className="font-display font-bold text-lg mb-1.5">Je suis un artisan</div>
               <p className="text-[10.5px] text-[#666B85] leading-relaxed">Créez votre site web en 5 minutes grâce à l'IA.</p>
             </div>
             <ArrowRight className="w-5 h-5 text-[#4F46E5] shrink-0 transition-transform group-hover:translate-x-1" />
