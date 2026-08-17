@@ -1,8 +1,23 @@
 import { Link } from "react-router-dom";
 import { siteBasePath } from "@/lib/subdomain";
+import { toast } from "sonner";
 
-export default function SiteFooter({ site }) {
-  const base = siteBasePath(site.slug);
+export default function SiteFooter({ site, isPreview = false }) {
+  // En preview, le slug n'est pas encore persisté en base : on force base à ""
+  // pour que l'ancre #services scroll sur la page courante au lieu de naviguer
+  // vers /site/{slug-deviné} → 404.
+  const base = isPreview ? "" : siteBasePath(site.slug);
+
+  const LOCKED_IN_PREVIEW = new Set(["realisations", "transformation"]);
+
+  const handleNavClick = (e, link) => {
+    if (isPreview && LOCKED_IN_PREVIEW.has(link.key)) {
+      e.preventDefault();
+      toast.info("Publiez votre site pour voir et modifier cette page");
+    }
+    // sinon : comportement normal (ancre ou navigation réelle), rien à faire
+  };
+
   return (
     <footer className="bg-[#0B0F1E] text-[#8A90AC] py-14 mt-16 rounded-t-[28px]">
       <div className="max-w-6xl mx-auto px-4 md:px-8">
@@ -23,9 +38,27 @@ export default function SiteFooter({ site }) {
           </div>
           <div>
             <h4 className="text-white text-[13px] font-bold mb-3.5">Navigation</h4>
-            <a href={`${base}#services`} className="block text-[13px] mb-2 hover:text-[var(--site-grad-b)]">Services</a>
-            <Link to={`${base}/realisations`} className="block text-[13px] mb-2 hover:text-[var(--site-grad-b)]">Réalisations</Link>
-            <Link to={`${base}/transformation`} className="block text-[13px] mb-2 hover:text-[var(--site-grad-b)]">Transformations</Link>
+            <a
+              href={`${base}#services`}
+              onClick={(e) => handleNavClick(e, { key: "services" })}
+              className="block text-[13px] mb-2 hover:text-[var(--site-grad-b)]"
+            >
+              Services
+            </a>
+            <Link
+              to={`${base}/realisations`}
+              onClick={(e) => handleNavClick(e, { key: "realisations" })}
+              className="block text-[13px] mb-2 hover:text-[var(--site-grad-b)]"
+            >
+              Réalisations
+            </Link>
+            <Link
+              to={`${base}/transformation`}
+              onClick={(e) => handleNavClick(e, { key: "transformation" })}
+              className="block text-[13px] mb-2 hover:text-[var(--site-grad-b)]"
+            >
+              Transformations
+            </Link>
           </div>
         </div>
         <div className="flex flex-wrap justify-between gap-3 pt-5 text-xs">

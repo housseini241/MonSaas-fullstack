@@ -541,9 +541,9 @@ export default function ArtisanTemplate({ site, onSubmitLead, editable = false, 
   return (
     <div className="artisan-site min-h-screen bg-[#F4F6FB] text-[#0F1222]" data-testid="artisan-template">
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
-      <SiteHeader site={site} activePage="home" />
+      <SiteHeader site={site} activePage="home" isPreview={isPreview} />
       {sectionOrder.map((key) => (SECTIONS[key] ? SECTIONS[key]() : null))}
-      <SiteFooter site={site} />
+      <SiteFooter site={site} isPreview={isPreview} />
     </div>
   );
 }

@@ -96,7 +96,7 @@ export default function PreviewPlans() {
             </span>
           </h1>
           <p className="mt-4 text-[15px] text-[#666B85] leading-relaxed">
-            Paiement sécurisé via Stripe · Sans engagement · Résiliable à tout moment
+            Paiement sécurisé via Stripe · Sans engagement 
           </p>
         </div>
 
@@ -184,7 +184,7 @@ export default function PreviewPlans() {
             ))}
           </div>
           <p className="text-center mt-6 text-[11.5px] font-mono uppercase tracking-[0.14em] text-[#666B85]">
-            paiement sécurisé via stripe · résiliation à tout moment
+            paiement sécurisé via stripe 
           </p>
         </div>
       </div>

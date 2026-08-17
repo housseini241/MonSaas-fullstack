@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Phone, Menu, X } from "lucide-react";
 import { resolveImg } from "@/lib/api";
 import { siteBasePath } from "@/lib/subdomain";
+import { toast } from "sonner";
 
 /**
  * SiteHeader — shared across ArtisanTemplate (home) and the dedicated
@@ -10,10 +11,15 @@ import { siteBasePath } from "@/lib/subdomain";
  *
  * activePage: "home" | "realisations" | "transformation" — used to highlight
  * the current nav item.
+ * isPreview: when true, links to the dedicated /realisations and /transformation
+ * pages are intercepted (the draft is not yet a persisted site) and a toast is shown.
  */
-export default function SiteHeader({ site, activePage = "home" }) {
+export default function SiteHeader({ site, activePage = "home", isPreview = false }) {
   const [open, setOpen] = useState(false);
-  const base = siteBasePath(site.slug);
+  // En preview, le slug n'est pas encore persisté en base : on force base à ""
+  // pour que les ancres (#services, #contact) scrollent sur la page courante
+  // au lieu de naviguer vers /site/{slug-deviné} → 404.
+  const base = isPreview ? "" : siteBasePath(site.slug);
 
   const links = [
     { key: "services", label: "Services", href: `${base}#services` },
@@ -21,6 +27,17 @@ export default function SiteHeader({ site, activePage = "home" }) {
     { key: "transformation", label: "Transformations", href: `${base}/transformation` },
     { key: "contact", label: "Contact", href: `${base}#contact` },
   ];
+
+  const LOCKED_IN_PREVIEW = new Set(["realisations", "transformation"]);
+
+  const handleNavClick = (e, link) => {
+    if (isPreview && LOCKED_IN_PREVIEW.has(link.key)) {
+      e.preventDefault();
+      toast.info("Publiez votre site pour voir et modifier cette page");
+      setOpen(false); // ferme le menu mobile si ouvert
+    }
+    // sinon : comportement normal (ancre ou navigation réelle), rien à faire
+  };
 
   return (
     <>
@@ -51,6 +68,7 @@ export default function SiteHeader({ site, activePage = "home" }) {
               <a
                 key={l.key}
                 href={l.href}
+                onClick={(e) => handleNavClick(e, l)}
                 className={`text-sm font-medium transition-colors hover:text-[var(--site-grad-a)] ${
                   activePage === l.key ? "text-[var(--site-grad-a)]" : "text-[#0F1222]"
                 }`}
@@ -96,7 +114,10 @@ export default function SiteHeader({ site, activePage = "home" }) {
             <a
               key={l.key}
               href={l.href}
-              onClick={() => setOpen(false)}
+              onClick={(e) => {
+                handleNavClick(e, l);
+                if (!(isPreview && LOCKED_IN_PREVIEW.has(l.key))) setOpen(false);
+              }}
               className="font-display text-2xl font-semibold py-3.5 border-b border-[#E4E8F1]"
             >
               {l.label}
