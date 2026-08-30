@@ -180,6 +180,8 @@ STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 if STRIPE_API_KEY and stripe_sdk:
     stripe_sdk.api_key = STRIPE_API_KEY
 
+DEV_FAKE_PAYMENTS = os.environ.get('DEV_FAKE_PAYMENTS', '').lower() in ('1', 'true', 'yes')
+
 ADMIN_EMAILS = {
     e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()
 }
@@ -210,7 +212,7 @@ async def upload_image_bytes(image_bytes: bytes, mime_type: str, kind: str, owne
 
 PACKAGES = {
     "pro_monthly": {"amount": 19.00, "currency": "eur", "label": "Pro · 30 jours", "days": 30},
-    "pro_yearly": {"amount": 185.00, "currency": "eur", "label": "Pro · 12 mois (-67%)", "days": 365},
+    "pro_yearly": {"amount": 190.00, "currency": "eur", "label": "Pro · 12 mois (-17%)", "days": 365},
 }
 FREE_SITE_LIMIT = 1
 
@@ -993,14 +995,16 @@ async def sites_preview(payload: PreviewSiteIn, user: dict = Depends(current_use
 @api_router.post("/sites/preview/checkout")
 async def sites_preview_checkout(body: CheckoutPreviewIn, user: dict = Depends(current_user)):
     return await create_preview_checkout(
-        db, body, user, STRIPE_API_KEY, StripeCheckout, CheckoutSessionRequest, PACKAGES,
+        db, body, user, STRIPE_API_KEY, stripe_sdk, PACKAGES,
+        dev_fake_payments=DEV_FAKE_PAYMENTS,
     )
 
 
 @api_router.get("/sites/preview/status/{session_id}")
 async def sites_preview_status(session_id: str, user: dict = Depends(current_user)):
     result = await finalize_preview_if_paid(
-        db, session_id, STRIPE_API_KEY, StripeCheckout, save_static_site, slugify, unique_slug, PACKAGES,
+        db, session_id, STRIPE_API_KEY, stripe_sdk, save_static_site, slugify, unique_slug, PACKAGES,
+        dev_fake_payments=DEV_FAKE_PAYMENTS,
     )
     if not result.get("handled"):
         raise HTTPException(status_code=404, detail="Session introuvable")
@@ -1373,6 +1377,9 @@ async def billing_me(user: dict = Depends(current_user)):
         "pro_until": user.get("pro_until"),
         "site_limit": FREE_SITE_LIMIT,
         "packages": PACKAGES,
+        "subscription_status": user.get("subscription_status"),
+        "stripe_subscription_id": user.get("stripe_subscription_id"),
+        "stripe_customer_id": user.get("stripe_customer_id"),
     }
 
 
@@ -1380,8 +1387,8 @@ async def billing_me(user: dict = Depends(current_user)):
 async def billing_checkout(body: CheckoutIn, user: dict = Depends(current_user)):
     if body.package_id not in PACKAGES:
         raise HTTPException(status_code=400, detail="Package invalide")
-    if not STRIPE_API_KEY:
-        raise HTTPException(status_code=503, detail="Stripe non configuré")
+    if not STRIPE_API_KEY or not stripe_sdk:
+        raise HTTPException(status_code=503, detail="Paiement non configuré")
 
     pkg = PACKAGES[body.package_id]
     origin = body.origin_url.rstrip("/")
@@ -1389,25 +1396,48 @@ async def billing_checkout(body: CheckoutIn, user: dict = Depends(current_user))
     cancel_url = f"{origin}/billing/cancel"
     webhook_url = f"{origin}/api/webhook/stripe"
 
-    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    # Éviter un double abonnement : si l'utilisateur a déjà un abonnement Pro actif
+    # (cancel_at_period_end est aussi bloqué — sinon double facturation pendant la période restante)
+    if user.get("stripe_subscription_id") and user.get("subscription_status") not in (None, "canceled"):
+        raise HTTPException(status_code=409, detail="Vous avez déjà un abonnement Pro actif. Gérez-le depuis votre compte.")
+
     metadata = {
+        "kind": "billing_subscription",
         "user_id": user["id"],
         "user_email": user["email"],
         "package_id": body.package_id,
         "days": str(pkg["days"]),
     }
-    req = CheckoutSessionRequest(
-        amount=float(pkg["amount"]),
-        currency=pkg["currency"],
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata=metadata,
-    )
-    session = await stripe_checkout.create_checkout_session(req)
+    interval = "month" if pkg["days"] <= 31 else "year"
+
+    # Vrai abonnement Stripe récurrent (mode="subscription") — prélèvement automatique mensuel/annuel
+    try:
+        session = await asyncio.to_thread(
+            stripe_sdk.checkout.Session.create,
+            mode="subscription",
+            payment_method_types=["card"],
+            line_items=[{
+                "quantity": 1,
+                "price_data": {
+                    "currency": pkg["currency"],
+                    "product_data": {"name": f"Hustart Pro — {pkg['label']}"},
+                    "unit_amount": int(round(float(pkg["amount"]) * 100)),
+                    "recurring": {"interval": interval, "interval_count": 1},
+                },
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            customer_email=user.get("email"),
+            metadata=metadata,
+            subscription_data={"metadata": metadata},
+        )
+    except Exception as e:
+        logger.error(f"Stripe subscription session creation failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Stripe indisponible: {str(e)[:100]}")
 
     txn = {
         "id": str(uuid.uuid4()),
-        "session_id": session.session_id,
+        "session_id": session.id,
         "user_id": user["id"],
         "user_email": user["email"],
         "package_id": body.package_id,
@@ -1421,7 +1451,7 @@ async def billing_checkout(body: CheckoutIn, user: dict = Depends(current_user))
         "updated_at": now_iso(),
     }
     await db.payment_transactions.insert_one(txn)
-    return {"url": session.url, "session_id": session.session_id}
+    return {"url": session.url, "session_id": session.id}
 
 
 async def _apply_pro_credit_if_paid(session_id: str) -> dict:
@@ -1453,7 +1483,13 @@ async def _apply_pro_credit_if_paid(session_id: str) -> dict:
         "updated_at": now_iso(),
     }
 
-    if status_resp.payment_status == "paid" and not txn.get("applied", False):
+    is_recurring = (txn.get("metadata") or {}).get("kind") == "billing_subscription"
+    if (
+        status_resp.payment_status == "paid"
+        and not txn.get("applied", False)
+        and not is_recurring
+    ):
+        # Les abonnements récurrents sont crédités par le webhook (/webhook/stripe/subscriptions)
         days = int(txn["metadata"].get("days", "30"))
         user = await db.users.find_one({"id": txn["user_id"]})
         if user:
@@ -1490,6 +1526,26 @@ async def billing_status(session_id: str, user: dict = Depends(current_user)):
     return await _apply_pro_credit_if_paid(session_id)
 
 
+@api_router.post("/billing/cancel")
+async def cancel_pro_subscription(user: dict = Depends(current_user)):
+    full_user = await db.users.find_one({"id": user["id"]})
+    sub_id = full_user.get("stripe_subscription_id") if full_user else None
+    if not sub_id:
+        raise HTTPException(status_code=404, detail="Aucun abonnement actif trouvé")
+    if not STRIPE_API_KEY or not stripe_sdk:
+        raise HTTPException(status_code=503, detail="Paiement non configuré")
+    try:
+        await asyncio.to_thread(stripe_sdk.Subscription.modify, sub_id, cancel_at_period_end=True)
+    except Exception as e:
+        logger.error(f"Stripe subscription cancel failed for {sub_id}: {e}")
+        raise HTTPException(status_code=502, detail="Impossible d'annuler côté Stripe")
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"subscription_status": "cancel_at_period_end", "updated_at": now_iso()}},
+    )
+    return {"ok": True, "message": "Abonnement annulé — accès Pro conservé jusqu'à la fin de la période déjà payée."}
+
+
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     if not STRIPE_API_KEY:
@@ -1513,8 +1569,9 @@ async def stripe_webhook(request: Request):
                     pending_site = await db.pending_sites.find_one({"stripe_session_id": event.session_id}, {"_id": 0, "id": 1})
                     if pending_site:
                         await finalize_preview_if_paid(
-                            db, event.session_id, STRIPE_API_KEY, StripeCheckout,
+                            db, event.session_id, STRIPE_API_KEY, stripe_sdk,
                             save_static_site, slugify, unique_slug, PACKAGES,
+                            dev_fake_payments=DEV_FAKE_PAYMENTS,
                         )
                     else:
                         await _apply_pro_credit_if_paid(event.session_id)
@@ -2365,67 +2422,165 @@ async def stripe_subscription_webhook(request: Request):
     if not event_type:
         return {"ok": False}
 
+    # Idempotence : un même événement Stripe (redelivery) ne doit jamais être traité deux fois
+    event_id = _g(event, "id")
+    if event_id:
+        already = await db.stripe_events_processed.find_one({"id": event_id})
+        if already:
+            return {"ok": True, "already_processed": True}
+        await db.stripe_events_processed.insert_one({"id": event_id, "processed_at": now_iso()})
+
     if event_type == "invoice.payment_succeeded":
         sub_id = _g(data, "subscription")
         if not sub_id:
             return {"ok": True}
+
+        # Cas domaine (inchangé, code existant)
         doc = await db.domains.find_one({"stripe_subscription_id": sub_id}, {"_id": 0})
-        if not doc:
-            return {"ok": True}
-        if _g(data, "billing_reason") == "subscription_create":
-            return {"ok": True}
-        try:
-            current_exp = datetime.fromisoformat(doc.get("expiry_date")) if doc.get("expiry_date") else datetime.now(timezone.utc)
-            if current_exp.tzinfo is None:
-                current_exp = current_exp.replace(tzinfo=timezone.utc)
-            if current_exp < datetime.now(timezone.utc):
+        if doc:
+            if _g(data, "billing_reason") == "subscription_create":
+                return {"ok": True}
+            try:
+                current_exp = datetime.fromisoformat(doc.get("expiry_date")) if doc.get("expiry_date") else datetime.now(timezone.utc)
+                if current_exp.tzinfo is None:
+                    current_exp = current_exp.replace(tzinfo=timezone.utc)
+                if current_exp < datetime.now(timezone.utc):
+                    current_exp = datetime.now(timezone.utc)
+            except Exception:
                 current_exp = datetime.now(timezone.utc)
-        except Exception:
-            current_exp = datetime.now(timezone.utc)
-        new_exp = (current_exp + timedelta(days=365)).isoformat()
-        await db.domains.update_one(
-            {"id": doc["id"]},
-            {"$set": {"expiry_date": new_exp, "last_renewed_at": now_iso(), "reminders_sent": [], "updated_at": now_iso()}},
-        )
-        await db.domain_renewals.insert_one({
-            "id": str(uuid.uuid4()),
-            "domain_id": doc["id"],
-            "user_id": doc["user_id"],
-            "domain_name": doc["domain_name"],
-            "amount_cents": _g(data, "amount_paid") or _g(data, "amount_due") or doc.get("amount_cents"),
-            "currency": (_g(data, "currency") or "eur").upper(),
-            "stripe_invoice_id": _g(data, "id"),
-            "stripe_subscription_id": sub_id,
-            "source": "subscription",
-            "status": "applied",
-            "payment_status": "paid",
-            "new_expiry_date": new_exp,
-            "created_at": now_iso(),
-            "updated_at": now_iso(),
-        })
+            new_exp = (current_exp + timedelta(days=365)).isoformat()
+            await db.domains.update_one(
+                {"id": doc["id"]},
+                {"$set": {"expiry_date": new_exp, "last_renewed_at": now_iso(), "reminders_sent": [], "updated_at": now_iso()}},
+            )
+            await db.domain_renewals.insert_one({
+                "id": str(uuid.uuid4()),
+                "domain_id": doc["id"],
+                "user_id": doc["user_id"],
+                "domain_name": doc["domain_name"],
+                "amount_cents": _g(data, "amount_paid") or _g(data, "amount_due") or doc.get("amount_cents"),
+                "currency": (_g(data, "currency") or "eur").upper(),
+                "stripe_invoice_id": _g(data, "id"),
+                "stripe_subscription_id": sub_id,
+                "source": "subscription",
+                "status": "applied",
+                "payment_status": "paid",
+                "new_expiry_date": new_exp,
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+            })
+            return {"ok": True}
+
+        # Cas abonnement Pro (site publish subscription)
+        user_doc = await db.users.find_one({"stripe_subscription_id": sub_id}, {"_id": 0})
+        if user_doc:
+            if _g(data, "billing_reason") == "subscription_create":
+                # Le premier paiement est déjà traité par finalize_preview_if_paid — éviter le double-crédit
+                return {"ok": True}
+            days = 30
+            try:
+                sub_meta = await asyncio.to_thread(stripe_sdk.Subscription.retrieve, sub_id)
+                days = int(sub_meta.get("metadata", {}).get("days", "30"))
+            except Exception as e:
+                logger.warning(f"Could not retrieve subscription metadata for {sub_id}, using 30-day fallback: {e}")
+            now = datetime.now(timezone.utc)
+            current = user_doc.get("pro_until")
+            try:
+                base = datetime.fromisoformat(current) if current else now
+                if base < now:
+                    base = now
+            except Exception:
+                base = now
+            new_until = (base + timedelta(days=days)).isoformat()
+            await db.users.update_one(
+                {"id": user_doc["id"]},
+                {"$set": {"pro_until": new_until, "subscription_status": "active", "updated_at": now_iso()}},
+            )
+            logger.info(f"Pro subscription renewed for user_id={user_doc['id']}, new pro_until={new_until}")
+            return {"ok": True}
+
+        # NOUVEAU — Abonnement Pro "billing_subscription" : premier paiement (utilisateur pas encore lié à sub_id)
+        if _g(data, "billing_reason") == "subscription_create":
+            try:
+                sub_obj = await asyncio.to_thread(stripe_sdk.Subscription.retrieve, sub_id)
+                sub_meta = _g(sub_obj, "metadata", {})
+                md = dict(sub_meta or {})
+                if md.get("kind") == "billing_subscription":
+                    uid = md.get("user_id")
+                    days = int(md.get("days", "30"))
+                    customer_id = _g(data, "customer")
+                    now = datetime.now(timezone.utc)
+                    user = await db.users.find_one({"id": uid}, {"_id": 0})
+                    if user:
+                        current = user.get("pro_until")
+                        try:
+                            base = datetime.fromisoformat(current) if current else now
+                            if base < now:
+                                base = now
+                        except Exception:
+                            base = now
+                        new_until = (base + timedelta(days=days)).isoformat()
+                        await db.users.update_one(
+                            {"id": uid},
+                            {"$set": {
+                                "pro_until": new_until,
+                                "stripe_subscription_id": sub_id,
+                                "stripe_customer_id": customer_id,
+                                "subscription_status": "active",
+                                "updated_at": now_iso(),
+                            }},
+                        )
+                        # Miroir du paiement sur la transaction locale
+                        await db.payment_transactions.update_many(
+                            {"user_id": uid, "package_id": md.get("package_id"), "payment_status": {"$ne": "paid"}},
+                            {"$set": {"payment_status": "paid", "status": "complete", "applied": True, "applied_at": now_iso(), "updated_at": now_iso()}},
+                        )
+                        logger.info(f"Billing subscription activated for user_id={uid}, new pro_until={new_until}")
+            except Exception as e:
+                logger.warning(f"Could not activate billing subscription {sub_id}: {e}")
+            return {"ok": True}
+
         return {"ok": True}
 
     if event_type == "customer.subscription.updated":
         sub_id = _g(data, "id")
         cancel_at_period_end = bool(_g(data, "cancel_at_period_end"))
         status = _g(data, "status")
+
+        # Cas domaine (inchangé)
         update: Dict[str, Any] = {"updated_at": now_iso()}
         if cancel_at_period_end or status in ("canceled", "unpaid", "incomplete_expired"):
             update["auto_renew"] = False
         await db.domains.update_one({"stripe_subscription_id": sub_id}, {"$set": update})
+
+        # Cas abonnement Pro : miroir du statut (pro_until intact — accès jusqu'à expiration naturelle)
+        await db.users.update_one(
+            {"stripe_subscription_id": sub_id},
+            {"$set": {"subscription_status": status, "updated_at": now_iso()}},
+        )
         return {"ok": True}
 
     if event_type == "customer.subscription.deleted":
         sub_id = _g(data, "id")
+
+        # Cas domaine (inchangé)
         await db.domains.update_one(
             {"stripe_subscription_id": sub_id},
             {"$set": {"auto_renew": False, "stripe_subscription_id": None, "updated_at": now_iso()}},
+        )
+
+        # Cas abonnement Pro : on garde pro_until intact (accès jusqu'à expiration naturelle),
+        # seul le lien d'abonnement et le statut sont nettoyés.
+        await db.users.update_one(
+            {"stripe_subscription_id": sub_id},
+            {"$set": {"subscription_status": "canceled", "stripe_subscription_id": None, "updated_at": now_iso()}},
         )
         return {"ok": True}
 
     if event_type == "invoice.payment_failed":
         sub_id = _g(data, "subscription")
         if sub_id:
+            # Cas domaine (inchangé)
             doc = await db.domains.find_one({"stripe_subscription_id": sub_id}, {"_id": 0, "id": 1, "domain_name": 1, "user_id": 1})
             if doc:
                 user_doc = await db.users.find_one({"id": doc["user_id"]}, {"_id": 0, "email": 1})
@@ -2439,6 +2594,26 @@ async def stripe_subscription_webhook(request: Request):
                         )
                     except Exception as e:
                         logger.error(f"Failed to send payment failure email: {e}")
+
+            # Cas abonnement Pro
+            pro_user = await db.users.find_one({"stripe_subscription_id": sub_id}, {"_id": 0, "email": 1, "id": 1})
+            if pro_user:
+                await db.users.update_one(
+                    {"id": pro_user["id"]},
+                    {"$set": {"subscription_status": "past_due", "updated_at": now_iso()}},
+                )
+                if pro_user.get("email"):
+                    try:
+                        await asyncio.to_thread(
+                            _send_email_sync,
+                            pro_user["email"],
+                            "Paiement échoué pour votre abonnement Hustart Pro",
+                            "<p>Le paiement automatique de votre abonnement <b>Hustart Pro</b> a échoué.</p>"
+                            "<p>Votre accès Pro reste actif jusqu'à la fin de la période en cours, mais merci de "
+                            "mettre à jour votre moyen de paiement pour éviter toute interruption.</p>",
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to send Pro payment failure email: {e}")
         return {"ok": True}
 
     return {"ok": True}
@@ -2966,6 +3141,11 @@ async def on_startup():
     existing_indexes = await db.pending_sites.index_information()
     if not any(info.get("expireAfterSeconds") == 604800 for info in existing_indexes.values()):
         await db.pending_sites.create_index("created_at", expireAfterSeconds=604800)
+
+    # Idempotence webhook Stripe : trace des événements traités, nettoyage après 30 jours
+    ev_indexes = await db.stripe_events_processed.index_information()
+    if not any(info.get("expireAfterSeconds") == 2592000 for info in ev_indexes.values()):
+        await db.stripe_events_processed.create_index("processed_at", expireAfterSeconds=2592000)
 
 
 

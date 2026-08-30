@@ -10,6 +10,7 @@ export default function Billing() {
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(null);
+  const [managing, setManaging] = useState(false);
 
   useEffect(() => {
     api.get("/billing/me")
@@ -32,12 +33,28 @@ export default function Billing() {
     }
   };
 
+  const cancelSubscription = async () => {
+    if (!info?.stripe_subscription_id) return;
+    setManaging(true);
+    try {
+      await api.post("/billing/cancel");
+      toast.success("Abonnement annulé. Votre accès Pro reste actif jusqu'à la fin de la période en cours.");
+      const r = await api.get("/billing/me");
+      setInfo(r.data);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Impossible d'annuler l'abonnement");
+    } finally {
+      setManaging(false);
+    }
+  };
+
   const isPro = info?.plan === "pro";
+  const hasSubscription = !!info?.stripe_subscription_id;
   const proUntil = info?.pro_until ? new Date(info.pro_until) : null;
 
   return (
     <AppShell
-      eyebrow={isPro ? `/ abonnement · pro actif jusqu'au ${proUntil?.toLocaleDateString("fr-FR")}` : "/ abonnement · choisissez votre formule"}
+      eyebrow={isPro ? (hasSubscription ? "/ abonnement · prélèvement automatique actif" : `/ abonnement · pro actif jusqu'au ${proUntil?.toLocaleDateString("fr-FR")}`) : "/ abonnement · choisissez votre formule"}
       title={
         loading
           ? <span className="text-ink-3">Facturation</span>
@@ -60,7 +77,9 @@ export default function Billing() {
               <div className="flex-1">
                 <div className="font-display font-semibold text-lg">Plan Pro actif</div>
                 <div className="text-sm text-surface/70">
-                  Expire le {proUntil?.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                  {hasSubscription
+                    ? "Renouvellement automatique — votre carte est débitée chaque période."
+                    : `Expire le ${proUntil?.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`}
                 </div>
               </div>
             </div>
@@ -100,17 +119,31 @@ export default function Billing() {
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary" /> Notifications email leads</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary" /> Support prioritaire</li>
               </ul>
-              <Button
-                onClick={() => checkout("pro_monthly")}
-                disabled={!!paying}
-                data-testid="plan-pro-monthly"
-                data-umami-event="billing-upgrade-click"
-                className="w-full h-12"
-              >
-                {paying === "pro_monthly"
-                  ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Redirection…</>
-                  : <>{isPro ? "Renouveler / Prolonger" : "Passer à Pro"} <ArrowRight className="w-4 h-4" /></>}
-              </Button>
+              {isPro && hasSubscription ? (
+                <Button
+                  onClick={cancelSubscription}
+                  disabled={managing}
+                  variant="outline"
+                  className="w-full h-12"
+                  data-testid="plan-pro-manage"
+                >
+                  {managing
+                    ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Annulation…</>
+                    : <>Gérer mon abonnement <ArrowRight className="w-4 h-4" /></>}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => checkout("pro_monthly")}
+                  disabled={!!paying}
+                  data-testid="plan-pro-monthly"
+                  data-umami-event="billing-upgrade-click"
+                  className="w-full h-12"
+                >
+                  {paying === "pro_monthly"
+                    ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Redirection…</>
+                    : <>{isPro ? "S'abonner" : "Passer à Pro"} <ArrowRight className="w-4 h-4" /></>}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -120,19 +153,34 @@ export default function Billing() {
               <p className="text-sm text-ink-3">12 mois de Pro pour le prix de 10. La meilleure offre.</p>
             </div>
             <div className="md:col-span-5 md:flex md:justify-end">
-              <Button
-                onClick={() => checkout("pro_yearly")}
-                disabled={!!paying}
-                data-testid="plan-pro-yearly"
-                data-umami-event="billing-upgrade-click"
-                variant="accent"
-                size="lg"
-                className="w-full md:w-auto"
-              >
-                {paying === "pro_yearly"
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Redirection…</>
-                  : <><Sparkles className="w-4 h-4" /> Prendre l'annuel</>}
-              </Button>
+              {isPro && hasSubscription ? (
+                <Button
+                  onClick={cancelSubscription}
+                  disabled={managing}
+                  variant="accent"
+                  size="lg"
+                  className="w-full md:w-auto"
+                  data-testid="plan-yearly-manage"
+                >
+                  {managing
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Annulation…</>
+                    : <><Sparkles className="w-4 h-4" /> Gérer mon abonnement</>}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => checkout("pro_yearly")}
+                  disabled={!!paying}
+                  data-testid="plan-pro-yearly"
+                  data-umami-event="billing-upgrade-click"
+                  variant="accent"
+                  size="lg"
+                  className="w-full md:w-auto"
+                >
+                  {paying === "pro_yearly"
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Redirection…</>
+                    : <><Sparkles className="w-4 h-4" /> Prendre l'annuel</>}
+                </Button>
+              )}
             </div>
           </div>
 
