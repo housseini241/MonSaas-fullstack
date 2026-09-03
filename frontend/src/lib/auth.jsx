@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "@/lib/api";
+import { initSync, clearLocalCacheOnLogout } from "@/lib/syncService";
 
 const AuthCtx = createContext(null);
 
@@ -23,6 +24,14 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Lancer la synchronisation locale dès que l'utilisateur est authentifié.
+  // Le listener réseau est enregistré une seule fois par initSync().
+  useEffect(() => {
+    if (user) {
+      initSync();
+    }
+  }, [user]);
+
   const login = async (email, password) => {
     const r = await api.post("/auth/login", { email, password });
     localStorage.setItem("aw_token", r.data.access_token);
@@ -39,6 +48,13 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch (e) { /* token déjà invalide, on nettoie quand même */ }
+    // Vider le cache SQLite local AVANT de supprimer le token, pour éviter
+    // que les données d'un compte ne fuient vers un autre utilisateur du même appareil.
+    try {
+      await clearLocalCacheOnLogout();
+    } catch (e) {
+      console.warn("[auth] Échec du nettoyage du cache local", e);
+    }
     localStorage.removeItem("aw_token");
     setUser(null);
   };

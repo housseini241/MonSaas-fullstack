@@ -1,36 +1,35 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "@/lib/api";
+import useOfflineData from "@/hooks/useOfflineData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Search, Mail, Phone, MapPin, Users } from "lucide-react";
+import { Plus, Search, Mail, Phone, MapPin, Users, WifiOff } from "lucide-react";
 import AppShell from "@/components/AppShell";
 
 export default function Clients() {
   const nav = useNavigate();
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Input contrôlé (valeur saisie) — la recherche ne se déclenche PAS à chaque frappe
   const [searchQuery, setSearchQuery] = useState("");
+  // Recherche réellement soumise — mise à jour uniquement au clic "Rechercher" ou touche Entrée
+  const [submittedSearch, setSubmittedSearch] = useState("");
 
-  const loadClients = async () => {
-    setLoading(true);
-    try {
-      const r = await api.get("/artisan/clients", {
-        params: searchQuery ? { search: searchQuery } : {},
-      });
-      setClients(r.data);
-    } catch (e) {
-      toast.error("Erreur lors du chargement des clients");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Le hook se redéclenche automatiquement quand submittedSearch change
+  // (via paramsKey stable = JSON.stringify(params)), donc plus besoin de loadClients().
+  const { data: clients, isFromCache, loading, error } = useOfflineData(
+    "clients",
+    { params: submittedSearch ? { search: submittedSearch } : {} }
+  );
 
+  // Toast uniquement pour une vraie erreur API (pas un fallback silencieux vers le cache)
   useEffect(() => {
-    loadClients();
-  }, []);
+    if (error && !isFromCache) {
+      toast.error("Erreur lors du chargement des clients");
+    }
+  }, [error, isFromCache]);
+
+  const handleSearch = () => setSubmittedSearch(searchQuery);
 
   return (
     <AppShell
@@ -48,22 +47,30 @@ export default function Clients() {
           </Button>
         </div>
 
-        {/* Search bar */}
-        <div className="bg-white border border-[#E4E8F1] rounded-2xl p-4 shadow-sm flex gap-3 items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6B7280]" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && loadClients()}
-              placeholder="Rechercher un client (nom, email, téléphone)…"
-              className="pl-10 border-0 shadow-none focus-visible:ring-0 focus-visible:border-0 h-11"
-              data-testid="search-input"
-            />
+        {/* Search bar + badge mode hors-ligne */}
+        <div>
+          <div className="bg-white border border-[#E4E8F1] rounded-2xl p-4 shadow-sm flex gap-3 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6B7280]" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                placeholder="Rechercher un client (nom, email, téléphone)…"
+                className="pl-10 border-0 shadow-none focus-visible:ring-0 focus-visible:border-0 h-11"
+                data-testid="search-input"
+              />
+            </div>
+            <Button onClick={handleSearch} variant="outline" data-testid="search-btn">
+              Rechercher
+            </Button>
           </div>
-          <Button onClick={loadClients} variant="outline" data-testid="search-btn">
-            Rechercher
-          </Button>
+          {isFromCache && (
+            <div className="flex items-center gap-1.5 text-[#6B7280] text-xs font-mono mt-2">
+              <WifiOff className="w-3.5 h-3.5 shrink-0" />
+              Mode hors-ligne · données en cache
+            </div>
+          )}
         </div>
 
         {/* List */}
@@ -71,7 +78,7 @@ export default function Clients() {
           <div className="py-20 flex items-center justify-center text-[#6B7280] font-mono text-sm">
             <span className="cursor-blink">Chargement</span>
           </div>
-        ) : clients.length === 0 ? (
+        ) : clients?.length === 0 ? (
           <div className="bg-white border border-[#E4E8F1] rounded-2xl p-12 text-center shadow-sm" data-testid="empty-clients">
             <div className="w-14 h-14 mx-auto bg-[#EEF0FE] text-[#4F46E5] rounded-2xl flex items-center justify-center mb-4">
               <Users className="w-6 h-6" />

@@ -51,6 +51,17 @@ let webpackConfig = {
         ],
       };
 
+      // Polyfill pour jeep-sqlite (compat navigateur) : webpack 5 ne fournit
+      // plus les polyfills node par défaut. On neutralise 'crypto' (utilisé par
+      // jeep-sqlite pour le chiffrement, inutile en mode 'no-encryption').
+      webpackConfig.resolve = {
+        ...webpackConfig.resolve,
+        fallback: {
+          ...(webpackConfig.resolve?.fallback || {}),
+          crypto: false,
+        },
+      };
+
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);
