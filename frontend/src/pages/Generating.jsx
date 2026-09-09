@@ -53,24 +53,23 @@ export default function Generating() {
       li++;
     }, 700);
 
-    // Générer la preview (draft non persisté) — l'appel retourne le draft
-    api.post("/sites/preview", payload)
+    // Lancer la génération synchrone (retourne directement le site)
+    api.post("/sites/generate-job", payload)
       .then((r) => {
-        const draft = r.data;
-        console.log("✅ Preview draft created:", draft?.id);
+        const site = r.data;
+        console.log("✅ Site generated synchronously:", site?.id);
         clearInterval(phaseInt);
         clearInterval(logInt);
         setLogs((prev) => [
           ...prev,
           `[ ai.core ] generation complete`,
-          `[ draft ] id=${draft?.id}`,
-          `[ redirect ] /preview`,
+          `[ site ] id=${site?.id}`,
+          `[ redirect ] /sites`,
         ]);
         sessionStorage.removeItem("aw_pending");
-        sessionStorage.setItem("aw_draft", JSON.stringify(draft));
         setPhase(PHASES.length - 1);
         setTimeout(() => {
-          nav("/preview");
+          nav("/sites");
         }, 1200);
       })
       .catch((err) => {
