@@ -66,6 +66,7 @@ class GenerateSiteIn(BaseModel):
     description: Optional[str] = None
     style: str = "moderne"
     generate_image: bool = True
+    template_id: Optional[str] = None
 
 
 class PreviewSiteIn(GenerateSiteIn):
@@ -107,6 +108,7 @@ class Site(BaseModel):
     phone: str
     email: Optional[str] = None
     style: str
+    template_id: Optional[str] = None
     content: Dict[str, Any]
     hero_image_url: Optional[str] = None
     logo_url: Optional[str] = None
@@ -130,6 +132,7 @@ class SiteUpdate(BaseModel):
     logo_url: Optional[str] = None
     service_image_urls: Optional[List[str]] = None
     style: Optional[str] = None
+    template_id: Optional[str] = None
     slug: Optional[str] = Field(default=None, min_length=3, max_length=60)
     show_map: Optional[bool] = None
     map_address: Optional[str] = None

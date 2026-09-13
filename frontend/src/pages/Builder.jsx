@@ -9,6 +9,8 @@ import { ArrowLeft, ExternalLink, Globe, Loader2, Inbox, Save, Phone, Mail, Copy
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ArtisanTemplate from "@/components/ArtisanTemplate";
+import TemplatePicker from "@/components/TemplatePicker";
+import { getTemplate } from "@/templates/registry";
 import ContentEditor from "@/components/ContentEditor";
 import ServicesEditor from "@/components/ServicesEditor";
 import DomainPanel from "@/components/DomainPanel";
@@ -73,6 +75,7 @@ export default function Builder() {
         map_address: site.map_address,
         theme: site.theme,
         section_order: site.section_order,
+        template_id: getTemplate(site.template_id).id,
       });
       toast.success("Modifications enregistrées");
     } catch (e) {
@@ -330,6 +333,20 @@ export default function Builder() {
             {/* Avant / Après */}
             <TransformationsManager site={site} onReplace={setSite} />
 
+            {/* Modèle du site */}
+            <div className="bg-white border border-border p-6" data-testid="design-template">
+              <h3 className="font-display font-semibold text-xl tracking-tight mb-1">Modèle du site</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Changez de modèle à tout moment : votre contenu, vos couleurs et l'ordre de vos sections sont conservés.
+              </p>
+              <TemplatePicker
+                value={getTemplate(site.template_id).id}
+                onChange={(id) => setSite((s) => ({ ...s, template_id: id }))}
+                businessType={site.business_type}
+                showComingSoon={false}
+              />
+            </div>
+
             {/* Couleurs & Polices */}
             <div className="bg-white border border-border p-6" data-testid="design-theme">
               <h3 className="font-display font-semibold text-xl tracking-tight mb-1">Couleurs & polices</h3>
@@ -393,6 +410,13 @@ export default function Builder() {
                 {site.show_map && (
                   <Input data-testid="settings-map-address" value={site.map_address || ""} onChange={(e) => updateField("map_address", e.target.value)} className="h-12 rounded-sm border-border" placeholder={`ex: 12 rue Lafayette, ${site.city}`} />
                 )}
+              </div>
+
+              <div className="pt-4 border-t border-border flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Modèle du site</span>
+                <button onClick={() => setActiveTab("design")} className="text-primary underline underline-offset-4 hover:text-foreground" data-testid="settings-go-to-template">
+                  {getTemplate(site.template_id).name} →
+                </button>
               </div>
 
               <div className="pt-4 border-t border-border flex items-center justify-between text-sm">

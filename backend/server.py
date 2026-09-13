@@ -428,6 +428,29 @@ async def unique_slug(base: str) -> str:
     return candidate
 
 
+# ---------- Site templates (Phase A : essential / atelier / batisseur) ----------
+KNOWN_TEMPLATE_IDS = {
+    "essential", "atelier", "batisseur",
+    "premium", "creatif", "minimal", "projet", "confiance", "impact", "signature",
+}
+DEFAULT_TEMPLATE_ID = "essential"
+
+
+def normalize_template_id(value) -> str:
+    """Retourne un template_id connu, ou le defaut si absent ou inconnu.
+    Garantit la retro-compatibilite : les sites existants sans template_id
+    tombent automatiquement sur 'essential'."""
+    if value and value in KNOWN_TEMPLATE_IDS:
+        return value
+    return DEFAULT_TEMPLATE_ID
+
+
+def validate_template_id(value: str) -> str:
+    if value not in KNOWN_TEMPLATE_IDS:
+        raise HTTPException(status_code=400, detail="Modele de site inconnu.")
+    return value
+
+
 async def save_static_site(site: dict) -> str:
     """Génère et sauvegarde le snapshot HTML statique d'un site artisan (crawlers)."""
     os.makedirs(STATIC_SITES_DIR, exist_ok=True)
@@ -748,6 +771,7 @@ async def generate_site(body: GenerateSiteIn, user: dict = Depends(current_user)
         "phone": body.phone,
         "email": body.email,
         "style": body.style,
+        "template_id": normalize_template_id(body.template_id),
         "content": content,
         "hero_image_url": image_data,
         "logo_url": None,
@@ -785,6 +809,9 @@ async def update_site(site_id: str, body: SiteUpdate, user: dict = Depends(curre
         raise HTTPException(status_code=404, detail="Site introuvable")
 
     update = {k: v for k, v in body.model_dump().items() if v is not None}
+
+    if "template_id" in update:
+        update["template_id"] = validate_template_id(update["template_id"])
 
     if "slug" in update:
         new_slug = validate_slug(update["slug"])
@@ -2705,6 +2732,7 @@ async def create_generation_job(payload: GenerateSiteIn, user: dict = Depends(cu
         "phone": payload.phone,
         "email": payload.email,
         "style": payload.style,
+        "template_id": normalize_template_id(payload.template_id),
         "content": content,
         "hero_image_url": image_data,
         "logo_url": None,
@@ -2817,6 +2845,7 @@ async def finalize_job(job_id: str, user: dict = Depends(current_user)):
         "phone": payload.get("phone", ""),
         "email": payload.get("email"),
         "style": payload.get("style", "moderne"),
+        "template_id": normalize_template_id(payload.get("template_id")),
         "content": content,
         "hero_image_url": image_data,
         "logo_url": None,
@@ -3110,6 +3139,41 @@ async def api_get_visibility(site_id: str, user: dict = Depends(current_user)):
     return await get_visibility(db, site_id, user)
 
 
+async def _migrate_marketing_copy() -> None:
+    """Corrige le texte marketing historique « Pas de template à choisir ».
+
+    Depuis l'ajout des modèles de site, cette affirmation est fausse. On la
+    remplace une seule fois par le texte par défaut à jour, sans toucher aux
+    autres réglages personnalisés par l'admin. Idempotent.
+    """
+    doc = await db.app_settings.find_one({"id": "default"}, {"_id": 0, "id": 0})
+    if not doc:
+        return
+    how = doc.get("how_it_works")
+    if not isinstance(how, dict):
+        return
+
+    default_how = DEFAULT_APP_SETTINGS.get("how_it_works", {})
+    changed = False
+
+    subtitle = how.get("subtitle") or ""
+    if "template à choisir" in subtitle:
+        how["subtitle"] = default_how.get("subtitle", subtitle)
+        changed = True
+
+    steps = how.get("steps")
+    default_steps = default_how.get("steps", [])
+    if isinstance(steps, list) and steps and isinstance(steps[0], dict) and default_steps:
+        if "8 champs simples" in (steps[0].get("description") or ""):
+            steps[0]["description"] = default_steps[0].get("description", steps[0]["description"])
+            changed = True
+
+    if not changed:
+        return
+    await db.app_settings.update_one({"id": "default"}, {"$set": {"how_it_works": how}})
+    logger.info("App settings migrated: marketing copy no longer mentions 'Pas de template à choisir'.")
+
+
 # =============================================================================
 # App startup / shutdown + middleware
 # =============================================================================
@@ -3133,6 +3197,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def on_startup():
     # Uploads locaux : le dossier est déjà créé au chargement du module
+    await _migrate_marketing_copy()
     await db.sessions.create_index("user_id")
     await db.sessions.create_index("id", unique=True)
     await db.password_resets.create_index("token_hash", unique=True)

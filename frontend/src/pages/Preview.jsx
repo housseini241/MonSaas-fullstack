@@ -32,6 +32,7 @@ function buildSiteFromDraft(draft) {
     phone: p.phone,
     email: p.email,
     style: p.style || "moderne",
+    template_id: p.template_id || "essential",
     content: draft.content || {},
     hero_image_url: null,
     logo_url: null,

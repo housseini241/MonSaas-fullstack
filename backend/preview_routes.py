@@ -199,6 +199,7 @@ async def finalize_preview_if_paid(
         "phone": payload.get("phone"),
         "email": payload.get("email"),
         "style": payload.get("style", "moderne"),
+        "template_id": payload.get("template_id") or "essential",
         "content": content,
         "hero_image_url": None,
         "logo_url": None,

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import TemplatePicker from "@/components/TemplatePicker";
 
 /* ══════════════════════════════════════════════════════════
    DONNÉES — 50 métiers BTP + services associés
@@ -155,7 +156,7 @@ function ProgressBar({ step, total }) {
 }
 
 function StepLabel({ step, total }) {
-  const labels = ["Votre métier", "Vos services", "Vos infos"];
+  const labels = ["Votre métier", "Vos services", "Vos infos", "Votre modèle"];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <span style={{ fontFamily: "monospace", fontSize: 11, color: C.amber, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
@@ -591,6 +592,31 @@ function Step3({ data, set, errors }) {
 }
 
 /* ══════════════════════════════════════════════════════════
+   ÉTAPE 4 — Modèle de site
+══════════════════════════════════════════════════════════ */
+
+function Step4({ data, set }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div>
+        <h1 style={{ fontFamily: "'Space Grotesk', Georgia, serif", fontWeight: 800, fontSize: 22, lineHeight: 1.25, margin: "0 0 8px", color: C.ink }}>
+          Choisissez le modèle de votre site
+        </h1>
+        <p style={{ fontSize: 14, color: C.ink3, margin: 0, lineHeight: 1.6 }}>
+          Les 3 modèles sont inclus. Vous pourrez en changer à tout moment, sans rien perdre de votre contenu.
+        </p>
+      </div>
+      <TemplatePicker
+        value={data.template_id}
+        onChange={(id) => set("template_id", id)}
+        businessType={data.business_types}
+        gridClassName="grid grid-cols-1 gap-4"
+      />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
    STYLE PARTAGÉ
 ══════════════════════════════════════════════════════════ */
 
@@ -619,9 +645,10 @@ export default function Onboarding() {
     email:          "",
     style:          "chaleureux",
     generate_image: true,
+    template_id:    "essential",
   });
 
-  const TOTAL = 3;
+  const TOTAL = 4;
   const set = (k, v) => setData((d) => ({ ...d, [k]: v }));
 
   const validate = () => {
@@ -701,6 +728,7 @@ export default function Onboarding() {
         {step === 1 && <Step1 data={data} set={set} />}
         {step === 2 && <Step2 data={data} set={set} />}
         {step === 3 && <Step3 data={data} set={set} errors={errors} />}
+        {step === 4 && <Step4 data={data} set={set} />}
 
         {/* Erreurs globales */}
         {Object.keys(errors).length > 0 && (

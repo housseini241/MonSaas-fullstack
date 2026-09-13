@@ -45,10 +45,10 @@ DEFAULT_APP_SETTINGS = {
         "kicker": "comment ça marche",
         "title_line_1": "De l'idée au site",
         "title_italic": "en ligne.",
-        "subtitle": "Pas de code. Pas de template à choisir. Pas d'agence. Vous remplissez un formulaire, notre IA fait le reste.",
+        "subtitle": "Pas de code. Pas d'agence. Choisissez votre modèle, notre IA rédige les textes et optimise le SEO local.",
         "steps": [
-            {"n": "1", "title": "Décrivez votre activité", "description": "Nom, métier, services, ville, téléphone. 8 champs simples, c'est tout.", "icon": "message-square"},
-            {"n": "2", "title": "L'IA crée tout pour vous", "description": "Textes SEO, structure, images d'ambiance, arguments commerciaux. En moins d'une minute.", "icon": "wand-2"},
+            {"n": "1", "title": "Décrivez votre activité", "description": "Nom, métier, services, ville, téléphone. Puis choisissez votre modèle.", "icon": "message-square"},
+            {"n": "2", "title": "L'IA crée tout pour vous", "description": "Textes SEO, structure et arguments commerciaux rédigés dans le modèle choisi. En moins d'une minute.", "icon": "wand-2"},
             {"n": "3", "title": "Publiez & captez des clients", "description": "URL partageable, formulaire de contact intégré, leads centralisés dans votre tableau de bord.", "icon": "globe"},
         ],
     },
