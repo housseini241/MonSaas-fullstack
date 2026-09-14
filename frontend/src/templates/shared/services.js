@@ -9,7 +9,8 @@ import { ALL_ACTIVITIES_LABEL } from "./constants";
  * Extracted from ArtisanTemplate.jsx so all templates share one implementation.
  */
 export default function useServiceGrouping(site) {
-  const services = (site.content || {}).services || [];
+  const content = site.content || {};
+  const services = useMemo(() => content.services || [], [content]);
   const [activeFilter, setActiveFilter] = useState(ALL_ACTIVITIES_LABEL);
 
   const activities = useMemo(() => {

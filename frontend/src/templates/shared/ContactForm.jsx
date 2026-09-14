@@ -87,6 +87,24 @@ const VARIANTS = {
     hint: "text-center text-xs text-[#5A6675]",
     checkbox: undefined,
   },
+  projet: {
+    card: "bg-white p-8 md:p-9 rounded-2xl border border-[#E5E7EB] space-y-4",
+    label: "text-xs font-semibold text-[#6B7280] block mb-1.5",
+    input:
+      "w-full bg-[#FAFAFA] border-[1.5px] border-[#E5E7EB] rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--site-grad-b)]",
+    successIcon:
+      "w-14 h-14 text-white rounded-full mx-auto mb-4 flex items-center justify-center",
+    successTitle: "font-display text-xl font-bold mb-2 text-[#111827]",
+    successText: "text-[#6B7280]",
+    rgpdLabel: "flex items-start gap-2.5 text-xs text-[#6B7280]",
+    submit:
+      "w-full text-white px-6 py-4 rounded-full font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-transform hover:-translate-y-0.5",
+    submitStyle: { background: "var(--site-grad-b)" },
+    successIconStyle: { background: "var(--site-grad-b)" },
+    linkColor: "var(--site-grad-b)",
+    hint: "text-center text-xs text-[#6B7280]",
+    checkbox: undefined,
+  },
 };
 
 export default function ContactForm({

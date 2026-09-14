@@ -99,7 +99,22 @@ export default function TemplateMock({ template, className = "" }) {
             <div style={bar("85%", 4, muted, 0.9, 7)} />
             <div style={{ ...bar(46, 12, accent, 1, 9), borderRadius: 999 }} />
           </div>
-          <div style={{ alignSelf: "stretch", background: muted, opacity: 0.4, borderRadius: square ? 0 : 10 }} />
+          {p.mosaicHero ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, alignSelf: "stretch" }}>
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: i % 3 === 0 ? accent : muted,
+                    opacity: i % 3 === 0 ? 0.45 : 0.35,
+                    borderRadius: square ? 0 : 6,
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{ alignSelf: "stretch", background: muted, opacity: 0.4, borderRadius: square ? 0 : 10 }} />
+          )}
         </div>
       )}
 
@@ -129,6 +144,32 @@ export default function TemplateMock({ template, className = "" }) {
               <div style={{ flex: 1 }}>
                 <div style={bar("60%", 6, accent, 0.9)} />
                 <div style={bar("85%", 4, muted, 0.9, 3)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* case-study strip (Projet-style templates) */}
+      {p.caseStudies && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: "8px 9px", background: bg }}>
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              style={{
+                border: `1px solid ${muted}55`,
+                borderRadius: square ? 0 : 6,
+                overflow: "hidden",
+                background: surface,
+              }}
+            >
+              <div style={{ display: "flex", height: 30 }}>
+                <div style={{ flex: 1, background: muted, opacity: 0.35 }} />
+                <div style={{ flex: 1, background: accent, opacity: 0.4 }} />
+              </div>
+              <div style={{ padding: "4px 6px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                <div style={bar("55%", 5, text, 0.7)} />
+                <div style={{ width: 26, height: 8, background: accent, borderRadius: 999 }} />
               </div>
             </div>
           ))}

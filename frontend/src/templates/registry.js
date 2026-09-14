@@ -4,6 +4,7 @@ import EssentialTemplate from "@/templates/essential/EssentialTemplate";
 import AtelierTemplate from "@/templates/atelier/AtelierTemplate";
 import BatisseurTemplate from "@/templates/batisseur/BatisseurTemplate";
 import ConfianceTemplate from "@/templates/confiance/ConfianceTemplate";
+import ProjetTemplate from "@/templates/projet/ProjetTemplate";
 
 /**
  * Template catalog.
@@ -166,13 +167,54 @@ export const TEMPLATES = [
       gallery: 4,
     },
   },
+  {
+    id: "projet",
+    number: "07",
+    name: "Projet",
+    style: "Portfolio, réalisations",
+    idealFor: "Rénovation, toiture, menuiserie, carrelage, peinture",
+    description:
+      "Met les travaux au premier plan : études de cas avant/après juste après le hero, galerie dense et bouton « devis similaire » après chaque réalisation.",
+    strengths: ["Études de cas", "Avant / après", "Galerie dense"],
+    defaultTheme: {
+      primary_color: "#111827",
+      accent_color: "#0EA5A4",
+      font_heading: "DM Sans",
+      font_body: "Inter",
+    },
+    defaultSectionOrder: [
+      "hero",
+      "realisations",
+      "services",
+      "value_props",
+      "transformation",
+      "about",
+      "process",
+      "contact",
+    ],
+    Component: ProjetTemplate,
+    preview: {
+      bg: "#FAFAFA",
+      surface: "#FFFFFF",
+      text: "#111827",
+      muted: "#C4C9D1",
+      accent: "#0EA5A4",
+      accent2: "#0EA5A4",
+      radius: "12px",
+      fullBleedHero: false,
+      darkHero: false,
+      mosaicHero: true,
+      caseStudies: true,
+      gallery: 4,
+    },
+  },
 ];
 
 /** Templates delivered in Phase A. */
 export const PHASE_A_TEMPLATE_IDS = ["essential", "atelier", "batisseur"];
 
 /** Templates delivered in Phase B so far (one by one, per the delivery plan). */
-export const PHASE_B_IMPLEMENTED_TEMPLATE_IDS = ["confiance"];
+export const PHASE_B_IMPLEMENTED_TEMPLATE_IDS = ["confiance", "projet"];
 
 /** Every template the artisan can pick today, in display order. */
 export const SELECTABLE_TEMPLATE_IDS = [
@@ -194,8 +236,11 @@ export const DEFAULT_TEMPLATE_ID = "essential";
 
 const BY_ID = new Map(TEMPLATES.map((t) => [t.id, t]));
 
-/** Selectable templates resolved to their catalog entry, in display order. */
-export const SELECTABLE_TEMPLATES = SELECTABLE_TEMPLATE_IDS.map((id) => BY_ID.get(id)).filter(Boolean);
+/** Selectable templates resolved to their catalog entry, ordered by catalog number. */
+export const SELECTABLE_TEMPLATES = SELECTABLE_TEMPLATE_IDS
+  .map((id) => BY_ID.get(id))
+  .filter(Boolean)
+  .sort((a, b) => a.number.localeCompare(b.number));
 
 export function getTemplate(id) {
   return BY_ID.get(id) || BY_ID.get(DEFAULT_TEMPLATE_ID);
@@ -233,6 +278,13 @@ const CONFIANCE_KEYWORDS = [
   "charpente", "isolation", "terrassement", "vrd", "assainiss",
 ];
 
+// Metters ou la preuve visuelle (photos avant/apres, portfolio) vend le plus.
+const PROJET_KEYWORDS = [
+  "renovat", "toiture", "couverture", "couvre", "menuis", "carrel",
+  "peintr", "facad", "facadier", "salle de bain", "cuisin", "piscin",
+  "platr", "plaq", "solier", "vitri", "ebenist", "isolation",
+];
+
 /**
  * Suggestive filter only — every template stays selectable.
  * Returns a de-duplicated list of template ids, most relevant first.
@@ -240,6 +292,7 @@ const CONFIANCE_KEYWORDS = [
 export function recommendTemplates(businessType = "") {
   const haystack = normalize(businessType);
   const recommended = [];
+  if (PROJET_KEYWORDS.some((k) => haystack.includes(k))) recommended.push("projet");
   if (CONFIANCE_KEYWORDS.some((k) => haystack.includes(k))) recommended.push("confiance");
   if (ATELIER_KEYWORDS.some((k) => haystack.includes(k))) recommended.push("atelier");
   if (BATISSEUR_KEYWORDS.some((k) => haystack.includes(k))) recommended.push("batisseur");
