@@ -103,6 +103,38 @@ export default function TemplateMock({ template, className = "" }) {
         </div>
       )}
 
+      {/* reassurance band (Confiance-style templates) */}
+      {p.reassuranceBand && (
+        <div
+          style={{
+            display: "flex",
+            background: `${accent}0D`,
+            borderTop: `1px solid ${muted}55`,
+            borderBottom: `1px solid ${muted}55`,
+          }}
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                padding: "6px 7px",
+                borderLeft: i === 0 ? "none" : `1px solid ${muted}55`,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <div style={{ width: 9, height: 9, borderRadius: "50%", border: `1.5px solid ${accent}`, flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={bar("60%", 6, accent, 0.9)} />
+                <div style={bar("85%", 4, muted, 0.9, 3)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* services strip */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${p.gallery || 4}, 1fr)`, gap: 6, padding: 9, background: bg }}>
         {Array.from({ length: p.gallery || 4 }).map((_, i) => (

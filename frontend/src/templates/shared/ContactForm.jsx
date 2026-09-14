@@ -6,9 +6,13 @@ import { Check, Send } from "lucide-react";
  * All templates share this component so the lead submission flow
  * (POST /public/sites/{slug}/leads via `onSubmitLead`) is never duplicated.
  * Only the *presentation* changes between templates, via the `variant` prop.
+ *
  * The "essential" variant reproduces the historical markup and classes
- * exactly, so Template 01 keeps rendering unchanged.
+ * exactly, so Template 01 keeps rendering unchanged. New templates only add
+ * an entry to VARIANTS — no logic is duplicated.
  */
+const GRADIENT = "linear-gradient(120deg, var(--site-grad-a), var(--site-grad-b))";
+
 const VARIANTS = {
   essential: {
     card: "bg-white p-8 md:p-9 rounded-[28px] shadow-[0_10px_30px_rgba(20,25,60,0.08)] space-y-4",
@@ -22,9 +26,9 @@ const VARIANTS = {
     rgpdLabel: "flex items-start gap-2.5 text-xs text-[#6B7280]",
     submit:
       "w-full text-white px-6 py-4 rounded-full font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-transform hover:-translate-y-0.5",
-    submitStyle: {
-      background: "linear-gradient(120deg, var(--site-grad-a), var(--site-grad-b))",
-    },
+    submitStyle: { background: GRADIENT },
+    successIconStyle: { background: GRADIENT },
+    linkColor: "var(--site-grad-a)",
     hint: "text-center text-xs text-[#6B7280]",
     checkbox: undefined,
   },
@@ -40,9 +44,9 @@ const VARIANTS = {
     rgpdLabel: "flex items-start gap-2.5 text-xs text-[#7A6A57]",
     submit:
       "w-full text-white px-6 py-4 rounded-[6px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-transform hover:-translate-y-0.5",
-    submitStyle: {
-      background: "linear-gradient(120deg, var(--site-grad-a), var(--site-grad-b))",
-    },
+    submitStyle: { background: GRADIENT },
+    successIconStyle: { background: GRADIENT },
+    linkColor: "var(--site-grad-a)",
     hint: "text-center text-xs text-[#7A6A57]",
     checkbox: undefined,
   },
@@ -58,10 +62,30 @@ const VARIANTS = {
     successText: "text-[#9AA4B2]",
     rgpdLabel: "flex items-start gap-2.5 text-xs text-[#9AA4B2]",
     submit:
-      "w-full text-[#0B0F14] px-6 py-4 rounded-none font-bold uppercase tracking-wide flex items-center justify-center gap-2 disabled:opacity-60 transition-transform hover:-translate-y-0.5",
-    submitStyle: { background: "var(--site-grad-b)" },
+      "w-full px-6 py-4 rounded-none font-bold uppercase tracking-wide flex items-center justify-center gap-2 disabled:opacity-60 transition-transform hover:-translate-y-0.5",
+    submitStyle: { background: "var(--site-grad-b)", color: "#0B0F14" },
+    successIconStyle: { background: "var(--site-grad-b)" },
+    linkColor: "var(--site-grad-b)",
     hint: "text-center text-xs text-[#9AA4B2]",
     checkbox: { accentColor: "var(--site-grad-b)" },
+  },
+  confiance: {
+    card: "bg-white p-8 md:p-9 rounded-[4px] border border-[#D7DEE6] space-y-4",
+    label: "text-xs font-semibold text-[#5A6675] block mb-1.5",
+    input:
+      "w-full bg-[#F7F9FB] border-[1.5px] border-[#D7DEE6] rounded-[4px] px-4 py-3 focus:outline-none focus:border-[var(--site-grad-a)]",
+    successIcon:
+      "w-14 h-14 text-white rounded-[4px] mx-auto mb-4 flex items-center justify-center",
+    successTitle: "font-display text-xl font-bold mb-2 text-[#1E3A5F]",
+    successText: "text-[#5A6675]",
+    rgpdLabel: "flex items-start gap-2.5 text-xs text-[#5A6675]",
+    submit:
+      "w-full text-white px-6 py-4 rounded-[4px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors",
+    submitStyle: { background: "var(--site-grad-a)" },
+    successIconStyle: { background: "var(--site-grad-a)" },
+    linkColor: "var(--site-grad-a)",
+    hint: "text-center text-xs text-[#5A6675]",
+    checkbox: undefined,
   },
 };
 
@@ -75,23 +99,12 @@ export default function ContactForm({
   onSubmitLead,
 }) {
   const styles = VARIANTS[variant] || VARIANTS.essential;
-  const submitStyle =
-    variant === "batisseur"
-      ? { ...styles.submitStyle, color: "#0B0F14" }
-      : styles.submitStyle;
-  const successIconStyle =
-    variant === "batisseur"
-      ? { background: "var(--site-grad-b)" }
-      : {
-          background:
-            "linear-gradient(120deg, var(--site-grad-a), var(--site-grad-b))",
-        };
 
   return (
     <form onSubmit={handleSubmit} className={styles.card} data-testid="contact-form">
       {sent ? (
         <div className="text-center py-8">
-          <div className={styles.successIcon} style={successIconStyle}>
+          <div className={styles.successIcon} style={styles.successIconStyle}>
             <Check className="w-6 h-6" />
           </div>
           <h3 className={styles.successTitle}>Message envoyé</h3>
@@ -154,11 +167,7 @@ export default function ContactForm({
             <span>
               J'accepte que mes informations soient utilisées pour être recontacté(e) au sujet de ma
               demande. Voir la{" "}
-              <a
-                href="#"
-                className="underline"
-                style={{ color: variant === "batisseur" ? "var(--site-grad-b)" : "var(--site-grad-a)" }}
-              >
+              <a href="#" className="underline" style={{ color: styles.linkColor }}>
                 politique de confidentialité
               </a>
               .
@@ -169,7 +178,7 @@ export default function ContactForm({
             disabled={sending || !onSubmitLead}
             data-testid="lead-submit"
             className={styles.submit}
-            style={submitStyle}
+            style={styles.submitStyle}
           >
             {sending ? "Envoi..." : <>Envoyer ma demande <Send className="w-4 h-4" /></>}
           </button>

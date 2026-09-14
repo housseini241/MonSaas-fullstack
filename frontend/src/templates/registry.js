@@ -3,6 +3,7 @@ import { DEFAULT_SECTION_ORDER } from "@/components/SectionsReorder";
 import EssentialTemplate from "@/templates/essential/EssentialTemplate";
 import AtelierTemplate from "@/templates/atelier/AtelierTemplate";
 import BatisseurTemplate from "@/templates/batisseur/BatisseurTemplate";
+import ConfianceTemplate from "@/templates/confiance/ConfianceTemplate";
 
 /**
  * Template catalog.
@@ -125,10 +126,59 @@ export const TEMPLATES = [
       gallery: 4,
     },
   },
+  {
+    id: "confiance",
+    number: "08",
+    name: "Confiance",
+    style: "Institutionnel, rassurant",
+    idealFor: "BTP, rénovation, entreprise générale",
+    description:
+      "Une présentation institutionnelle : bandeau de garanties sous le hero, palette bleu marine sobre et zone d'intervention mise en avant.",
+    strengths: ["Bandeau de réassurance", "Palette sobre", "Zone d'intervention"],
+    defaultTheme: {
+      primary_color: "#1E3A5F",
+      accent_color: "#4A6B8A",
+      font_heading: "Playfair Display",
+      font_body: "Inter",
+    },
+    defaultSectionOrder: [
+      "hero",
+      "reassurance",
+      "value_props",
+      "services",
+      "realisations",
+      "about",
+      "process",
+      "contact",
+    ],
+    Component: ConfianceTemplate,
+    preview: {
+      bg: "#F5F7F9",
+      surface: "#FFFFFF",
+      text: "#1E3A5F",
+      muted: "#AEBAC8",
+      accent: "#1E3A5F",
+      accent2: "#4A6B8A",
+      radius: "4px",
+      fullBleedHero: false,
+      darkHero: false,
+      reassuranceBand: true,
+      gallery: 4,
+    },
+  },
 ];
 
-/** Templates that are selectable today (Phase A pilots). */
+/** Templates delivered in Phase A. */
 export const PHASE_A_TEMPLATE_IDS = ["essential", "atelier", "batisseur"];
+
+/** Templates delivered in Phase B so far (one by one, per the delivery plan). */
+export const PHASE_B_IMPLEMENTED_TEMPLATE_IDS = ["confiance"];
+
+/** Every template the artisan can pick today, in display order. */
+export const SELECTABLE_TEMPLATE_IDS = [
+  ...PHASE_A_TEMPLATE_IDS,
+  ...PHASE_B_IMPLEMENTED_TEMPLATE_IDS,
+];
 
 /** Announced for Phase B — shown as "à venir" until implemented. */
 export const PHASE_B_TEMPLATES = [
@@ -136,17 +186,16 @@ export const PHASE_B_TEMPLATES = [
   { id: "creatif", name: "Créatif", idealFor: "Peintre, décorateur, paysagiste" },
   { id: "minimal", name: "Minimal", idealFor: "Indépendants, tous métiers" },
   { id: "projet", name: "Projet", idealFor: "Métiers où la preuve visuelle compte" },
-  { id: "confiance", name: "Confiance", idealFor: "BTP, rénovation" },
   { id: "impact", name: "Impact", idealFor: "Artisans voulant se démarquer" },
   { id: "signature", name: "Signature", idealFor: "Artisans haut de gamme" },
-];
+].filter((t) => !SELECTABLE_TEMPLATE_IDS.includes(t.id));
 
 export const DEFAULT_TEMPLATE_ID = "essential";
 
 const BY_ID = new Map(TEMPLATES.map((t) => [t.id, t]));
 
-/** Templates selectable in Phase A, in display order. */
-export const SELECTABLE_TEMPLATES = PHASE_A_TEMPLATE_IDS.map((id) => BY_ID.get(id)).filter(Boolean);
+/** Selectable templates resolved to their catalog entry, in display order. */
+export const SELECTABLE_TEMPLATES = SELECTABLE_TEMPLATE_IDS.map((id) => BY_ID.get(id)).filter(Boolean);
 
 export function getTemplate(id) {
   return BY_ID.get(id) || BY_ID.get(DEFAULT_TEMPLATE_ID);
@@ -176,6 +225,14 @@ const BATISSEUR_KEYWORDS = [
   "echafaud", "desamiant", "vrd", "assainiss", "travaux publics", "gros-oeuvre",
 ];
 
+// Metters ou l'aspect rassurant (garanties, entreprise etablie) prime :
+// renovation, gros oeuvre, toiture, facade, isolation.
+const CONFIANCE_KEYWORDS = [
+  "renovation", "entreprise generale", "batiment", "construction", "macon",
+  "gros oeuvre", "toiture", "couverture", "couvre", "facade", "facadier",
+  "charpente", "isolation", "terrassement", "vrd", "assainiss",
+];
+
 /**
  * Suggestive filter only — every template stays selectable.
  * Returns a de-duplicated list of template ids, most relevant first.
@@ -183,6 +240,7 @@ const BATISSEUR_KEYWORDS = [
 export function recommendTemplates(businessType = "") {
   const haystack = normalize(businessType);
   const recommended = [];
+  if (CONFIANCE_KEYWORDS.some((k) => haystack.includes(k))) recommended.push("confiance");
   if (ATELIER_KEYWORDS.some((k) => haystack.includes(k))) recommended.push("atelier");
   if (BATISSEUR_KEYWORDS.some((k) => haystack.includes(k))) recommended.push("batisseur");
   // "essential" is always a safe choice and always last.

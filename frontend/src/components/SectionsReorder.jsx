@@ -5,6 +5,7 @@ import { GripVertical } from "lucide-react";
 
 const SECTION_LABELS = {
   hero: { label: "Hero (titre principal)", desc: "Bandeau d'accueil avec titre, sous-titre et CTA" },
+  reassurance: { label: "Réassurance", desc: "Bandeau de confiance sous le hero : garanties, expérience, zone d'intervention (modèle Confiance)" },
   services: { label: "Services", desc: "Liste de prestations avec photos, adaptée au nombre d'activités" },
   realisations: { label: "Réalisations", desc: "Aperçu de chantiers + lien vers la page complète (masqué si aucune réalisation)" },
   transformation: { label: "Transformation", desc: "Slider avant/après + lien vers la page complète (masqué si aucune transformation)" },
